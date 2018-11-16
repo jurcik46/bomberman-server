@@ -22,10 +22,9 @@ int main() {
 //    log_fatal(const char *fmt, ...);
 
     log_debug("Hello %s", "world");
-    log_debug("Hello %s", "world");
-    log_debug("Hello %s", "world");
-    log_debug("Hello %s", "world");
-    log_debug("Hello %s", "world");
+    log_info("Hello %s", "world");
+    log_warn("Hello %s", "world");
+    log_error("Hello %s", "world");
 
     fclose(logFile);
     return 0;
