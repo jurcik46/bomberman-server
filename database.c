@@ -67,14 +67,9 @@ void initTables() {
 }
 
 int registration(char *nick, char *heslo) {
-    int a = sqlite3_open(DB_NAME, &db);
+    sqlite3_open(DB_NAME, &db);
 
-    if (a) {
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
-        return (0);
-    } else {
-        fprintf(stderr, "Opened database successfully\n");
-    }
+
     char sql[1000] = "INSERT INTO Users (`nick`,`password`) VALUES ('";
     strcat(sql, nick);
     strcat(sql, DB_SQL_VALUES_COMMA);
@@ -116,20 +111,13 @@ int login(char *nick, char *heslo) {
     } else {
         log_debug("Login(select): sqlite3_preper succes");
     }
-    do {
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
 
 
-    } while ((rc = sqlite3_step(stmt)) == SQLITE_ROW);
-    while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
-
-       
         int tmpId = sqlite3_column_int(stmt, 0);
-        log_debug("Id %d", tmpId);
         const unsigned char *tmpNick = sqlite3_column_text(stmt, 1);
-        log_debug("Nick %s", tmpNick);
         const unsigned char *tmpPswd = sqlite3_column_text(stmt, 2);
-        log_debug("Password %s", tmpPswd);
-
+        log_debug("Id %d \t Nick: %s \t Password: %s", tmpId, tmpNick, tmpPswd);
 
         if (strcmp(heslo, (const char *) tmpPswd) == 0) {
             result = 200;
@@ -139,6 +127,14 @@ int login(char *nick, char *heslo) {
 
     }
 
+    if (result == 0) {
+        log_debug("Login: pre daneho uzivatela sa zaznam nenasiel Nick: %s", nick);
+        result = 401;
+        if (registration(nick, heslo)) {
+            result = 201;
+        }
+    }
+
     sqlite3_finalize(stmt);
     sqlite3_close(db);
     return result;
@@ -146,12 +142,11 @@ int login(char *nick, char *heslo) {
 
 
 int callback(void *NotUsed, int argc, char **argv, char **azColName) {
-
     for (int i = 0; i < argc; i++) {
 
         printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
     }
-    printf("\n");
+    printf("\n ");
 
     return 0;
 
