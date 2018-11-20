@@ -12,8 +12,8 @@ int main() {
     log_set_fp(logFile);
 //    initTables();
 //    registration("aaaa", "bbb");
-    int a = login("aaaa", "bbb");
-    log_debug("%d", a);
+//    int a = login("aaaa", "bbb");
+//    log_debug("%d", a);
     if (logFile == NULL) {
         printf("Error! opening file");
         // Program exits if the file pointer returns NULL.
