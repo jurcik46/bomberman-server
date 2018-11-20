@@ -1,5 +1,6 @@
 #include "database.h"
 #include "logging/log.h"
+#include "constants.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -67,6 +68,8 @@ void initTables() {
 }
 
 int registration(char *nick, char *heslo) {
+    enum result_code result;
+    result = ZERO;
     sqlite3_open(DB_NAME, &db);
 
 
@@ -76,10 +79,9 @@ int registration(char *nick, char *heslo) {
     strcat(sql, heslo);
     strcat(sql, DB_SQL_VALUES_END);
 
-    log_debug("Registration SQL: \"%s\"", sql);
+//    log_debug("Registration SQL: \"%s\"", sql);
 
     int rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
-    int result = 0;
     if (rc != SQLITE_OK) {
         log_error("Nepodarilo sa registrovat hraca do tabulky Users Nick: %s  Error %s", nick, zErrMsg);
         sqlite3_free(zErrMsg);
@@ -95,19 +97,21 @@ int registration(char *nick, char *heslo) {
 }
 
 int login(char *nick, char *heslo) {
+    enum result_code result;
+    result = ZERO;
+
     sqlite3_open(DB_NAME, &db);
     sqlite3_stmt *stmt;
-    int result = 0;
     char sql[1000] = "SELECT `id` as user_id,`nick`,  `password` as password FROM `Users` WHERE `nick` = '";
     strcat(sql, nick);
     strcat(sql, "';");
 
-    log_debug("Login SQL: \"%s\"", sql);
+//    log_debug("Login SQL: \"%s\"", sql);
 
     int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK) {
         log_error("Chyba pri priprave sql prikazu:  %s", sqlite3_errmsg(db));
-        result = 500;
+        result = INTERNAL_SERVER_ERROR;
     } else {
         log_debug("Login(select): sqlite3_preper succes");
     }
@@ -120,18 +124,18 @@ int login(char *nick, char *heslo) {
         log_debug("Id %d \t Nick: %s \t Password: %s", tmpId, tmpNick, tmpPswd);
 
         if (strcmp(heslo, (const char *) tmpPswd) == 0) {
-            result = 200;
+            result = OK;
         } else {
-            result = 401;
+            result = UNAUTHORIZED;
         }
 
     }
 
-    if (result == 0) {
+    if (result == ZERO) {
         log_debug("Login: pre daneho uzivatela sa zaznam nenasiel Nick: %s", nick);
-        result = 401;
+        result = UNAUTHORIZED;
         if (registration(nick, heslo)) {
-            result = 201;
+            result = CREATED;
         }
     }
 
@@ -143,7 +147,6 @@ int login(char *nick, char *heslo) {
 
 int callback(void *NotUsed, int argc, char **argv, char **azColName) {
     for (int i = 0; i < argc; i++) {
-
         printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
     }
     printf("\n ");
