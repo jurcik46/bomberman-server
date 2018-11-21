@@ -11,11 +11,12 @@
 #include <stdbool.h>
 #include <errno.h>
 #include <arpa/inet.h>
+#include <sys/time.h>
 
 #include "logging/log.h"
 
 #define BUFFER_SIZE 1024
-#define MAX_CLIENT 101
+#define MAX_CLIENT 10
 /**
  * Client socket
  */
@@ -53,6 +54,8 @@ int activity;
  */
 
 void initSocket(u_int16_t port);
+
+void setSocketToFD();
 
 void *accpetSocketThreadFun(void *arg);
 

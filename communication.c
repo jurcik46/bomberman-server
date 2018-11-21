@@ -18,6 +18,7 @@ void initSocket(u_int16_t port) {
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(port);
+
     if (bind(server_fd, (struct sockaddr *) &address, sizeof(address)) < 0) {
         log_error("bind failed");
         exit(EXIT_FAILURE);
@@ -28,6 +29,12 @@ void initSocket(u_int16_t port) {
         exit(EXIT_FAILURE);
     }
     /**
+     * Init Select for File description changes
+     */
+    FD_ZERO(&socketDs);
+    max_sd = 0;
+
+    /**
      * Init new thread for accepting new clients connnections
      */
     cSocket.end = false;
@@ -35,28 +42,32 @@ void initSocket(u_int16_t port) {
     pthread_mutex_init(&cSocket.lock, NULL);
 
     pthread_create(&acceptSocketThread, NULL, &accpetSocketThreadFun, &cSocket);
-    /**
-     * Init Select for File description changes
-     */
-    FD_ZERO(&socketDs);
-    max_sd = 0;
+
 }
 
 void startCommunication() {
     int a = 1;
     while (a) {
         FD_ZERO(&socketDs);
+
+        setSocketToFD();
+        if (cSocket.count == 0) {
+            sleep(5);
+            continue;
+        }
         activity = select(max_sd + 1, &socketDs, NULL, NULL, NULL);
+        log_debug("%d", activity);
 
         if ((activity < 0) && (errno != EINTR)) {
             log_error("Select Socket Activity error");
+            continue;
         }
 
         //else its some IO operation on some other socket
         for (int i = 0; i < MAX_CLIENT; i++) {
             sd = cSocket.socket[i];
 
-            if (FD_ISSET(sd, &socketDs)) {
+            if (cSocket.socket[i] != 0 && FD_ISSET(sd, &socketDs)) {
                 //Check if it was for closing , and also read the
                 //incoming message
                 if (read(sd, buffer, BUFFER_SIZE) == 0) {
@@ -78,6 +89,9 @@ void startCommunication() {
 
                     //Echo back the message that came in
                 else {
+                    log_debug(buffer);
+                    char *hello = "Hello from Server";
+                    send(sd, hello, strlen(hello), 0);
                     //set the string terminating NULL byte on the end
                     //of the data read
 //                    buffer[valread] = '\0';
@@ -85,7 +99,24 @@ void startCommunication() {
                 }
             }
         }
+    }
+}
 
+void setSocketToFD() {
+    //add child sockets to set
+    for (int i = 0; i < MAX_CLIENT; i++) {
+        //socket descriptor
+        sd = cSocket.socket[i];
+
+        //if valid socket descriptor then add to read list
+        if (sd > 0)
+            FD_SET(sd, &socketDs);
+
+        //highest file descriptor number, need it for the select function
+        if (sd > max_sd) {
+            max_sd = sd;
+            log_debug("Max_SD : %d", max_sd);
+        }
 
     }
 }
@@ -107,23 +138,14 @@ void *accpetSocketThreadFun(void *arg) {
 
         pthread_mutex_lock(&data->lock);
 
-        for (int i = 0; i < data->count; i++) {
+        for (int i = 0; i < MAX_CLIENT; i++) {
 
             if (data->socket[i] == 0) {
-                data->socket[data->count] = new_socket;
+                data->socket[i] = new_socket;
                 data->count++;
 
-                //socket descriptor
-                sd = new_socket;
-
-                //if valid socket descriptor then add to read list
-                if (sd > 0)
-                    FD_SET(sd, &socketDs);
-
-                //highest file descriptor number, need it for the select function
-                if (sd > max_sd)
-                    max_sd = sd;
-                log_debug("New Socket Added Count %d", data->count);
+                log_info("New Socket Added Count %d Id socket %d ", data->count, new_socket);
+                break;
             }
 
         }
@@ -131,7 +153,7 @@ void *accpetSocketThreadFun(void *arg) {
 
     };
 
-    log_debug("Exit socketThread");
+    log_info("Exit socketThread");
     pthread_exit(NULL);
 }
 
