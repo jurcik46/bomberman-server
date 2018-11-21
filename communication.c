@@ -1,7 +1,3 @@
-//
-// Created by Jurco on 20. 11. 2018.
-//
-
 #include "communication.h"
 
 
@@ -39,12 +35,59 @@ void initSocket(u_int16_t port) {
     pthread_mutex_init(&cSocket.lock, NULL);
 
     pthread_create(&acceptSocketThread, NULL, &accpetSocketThreadFun, &cSocket);
-
+    /**
+     * Init Select for File description changes
+     */
+    FD_ZERO(&socketDs);
+    max_sd = 0;
 }
 
 void startCommunication() {
+    int a = 1;
+    while (a) {
+        FD_ZERO(&socketDs);
+        activity = select(max_sd + 1, &socketDs, NULL, NULL, NULL);
+
+        if ((activity < 0) && (errno != EINTR)) {
+            log_error("Select Socket Activity error");
+        }
+
+        //else its some IO operation on some other socket
+        for (int i = 0; i < MAX_CLIENT; i++) {
+            sd = cSocket.socket[i];
+
+            if (FD_ISSET(sd, &socketDs)) {
+                //Check if it was for closing , and also read the
+                //incoming message
+                if (read(sd, buffer, BUFFER_SIZE) == 0) {
+
+                    //Somebody disconnected , get his details and print
+                    getpeername(sd, (struct sockaddr *) &address, \
+                        (socklen_t *) &addrlen);
+                    log_warn("Host disconnected , ip %s , port %d ",
+                             inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+
+                    //Close the socket and mark as 0 in list for reuse
+                    pthread_mutex_lock(&cSocket.lock);
+                    close(cSocket.socket[i]);
+                    cSocket.socket[i] = 0;
+                    cSocket.count--;
+                    pthread_mutex_unlock(&cSocket.lock);
+
+                }
+
+                    //Echo back the message that came in
+                else {
+                    //set the string terminating NULL byte on the end
+                    //of the data read
+//                    buffer[valread] = '\0';
+//                    send(sd, buffer, strlen(buffer), 0);
+                }
+            }
+        }
 
 
+    }
 }
 
 void *accpetSocketThreadFun(void *arg) {
@@ -63,10 +106,28 @@ void *accpetSocketThreadFun(void *arg) {
         }
 
         pthread_mutex_lock(&data->lock);
-        data->count++;
-        data->socket[data->count] = new_socket;
+
+        for (int i = 0; i < data->count; i++) {
+
+            if (data->socket[i] == 0) {
+                data->socket[data->count] = new_socket;
+                data->count++;
+
+                //socket descriptor
+                sd = new_socket;
+
+                //if valid socket descriptor then add to read list
+                if (sd > 0)
+                    FD_SET(sd, &socketDs);
+
+                //highest file descriptor number, need it for the select function
+                if (sd > max_sd)
+                    max_sd = sd;
+                log_debug("New Socket Added Count %d", data->count);
+            }
+
+        }
         pthread_mutex_unlock(&data->lock);
-        log_debug("New Socket Added Count %d", data->count);
 
     };
 
@@ -77,14 +138,18 @@ void *accpetSocketThreadFun(void *arg) {
 
 void closeSocket() {
 
-    close(server_fd);
     pthread_mutex_lock(&cSocket.lock);
     cSocket.end = true;
-    while (cSocket.count > 0) {
-        close(cSocket.socket[cSocket.count]);
+
+    for (int i = 0; i < MAX_CLIENT; i++) {
+        close(cSocket.socket[i]);
         cSocket.count--;
     }
+
     pthread_mutex_unlock(&cSocket.lock);
 
+    close(server_fd);
+
     pthread_mutex_destroy(&cSocket.lock);
+
 }
