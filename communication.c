@@ -74,7 +74,7 @@ void startCommunication() {
 
                     //Somebody disconnected , get his details and print
                     getpeername(sd, (struct sockaddr *) &address, \
-                        (socklen_t * ) & addrlen);
+                        (socklen_t *) &addrlen);
                     log_warn("Host disconnected , ip %s , port %d ",
                              inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 
