@@ -13,6 +13,7 @@
 #include "communication.h"
 
 #define LOG_FILE_PATH "logs.log"
+#define PORT 8080
 
 
 void loggerInit(FILE *logFile) {
@@ -36,8 +37,7 @@ int main(int argc, char *argv[]) {
     FILE *logFile = fopen(LOG_FILE_PATH, "w+");
     loggerInit(logFile);
 
-
-    initSocket(8080);
+    initSocket(PORT);
     startCommunication();
 
 
