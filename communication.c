@@ -55,8 +55,8 @@ void startCommunication() {
             sleep(5);
             continue;
         }
+
         activity = select(max_sd + 1, &socketDs, NULL, NULL, NULL);
-        log_debug("%d", activity);
 
         if ((activity < 0) && (errno != EINTR)) {
             log_error("Select Socket Activity error");
@@ -74,7 +74,7 @@ void startCommunication() {
 
                     //Somebody disconnected , get his details and print
                     getpeername(sd, (struct sockaddr *) &address, \
-                        (socklen_t *) &addrlen);
+                        (socklen_t * ) & addrlen);
                     log_warn("Host disconnected , ip %s , port %d ",
                              inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 
@@ -85,10 +85,7 @@ void startCommunication() {
                     cSocket.count--;
                     pthread_mutex_unlock(&cSocket.lock);
 
-                }
-
-                    //Echo back the message that came in
-                else {
+                } else {
                     log_debug(buffer);
                     char *hello = "Hello from Server";
                     send(sd, hello, strlen(hello), 0);
