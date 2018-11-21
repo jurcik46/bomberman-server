@@ -35,9 +35,9 @@ int main(int argc, char *argv[]) {
 
     initSocket(8080);
     char *hello = "Hello from server";
-    read(new_socket, buffer, BUFFER_SIZE);
+//    read(new_socket, buffer, BUFFER_SIZE);
     printf("%s\n", buffer);
-    send(new_socket, hello, strlen(hello), 0);
+//    send(new_socket, hello, strlen(hello), 0);
     printf("Hello message sent\n");
 
 //    log_trace(const char *fmt, ...);
@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
 //    if (n < 0) error("ERROR writing to socket");
 //    close(newsockfd);
 //    close(sockfd);
-
+    closeSocket();
     fclose(logFile);
     return 0;
 }
