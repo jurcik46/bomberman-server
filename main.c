@@ -33,10 +33,20 @@ void closingApp(FILE *logFile) {
     fclose(logFile);
 };
 
+
 int main(int argc, char *argv[]) {
+
     FILE *logFile = fopen(LOG_FILE_PATH, "w+");
     loggerInit(logFile);
 
+//    int someInt = 222;
+//    int someInst = 333;
+//    char str[50];
+//    sprintf(str, "%d %d ", someInt, someInst);
+//
+//    log_debug("%s", str);
+//    int a = atoi(str);
+//    log_debug("%d", a);
     initSocket(PORT);
     startCommunication();
 
