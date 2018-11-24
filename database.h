@@ -18,9 +18,9 @@ int callback(void *NotUsed, int argc, char **argv, char **azColName);
 
 void initTables();
 
-int registration(char *nick, char *heslo);
+enum result_code registration(char *nick, char *heslo);
 
-int login(char *nick, char *heslo);
+enum result_code login(char *nick, char *heslo);
 
 
 #endif //BOMBERMAN_SERVER_DATABASE_H

@@ -4,6 +4,7 @@
 void initSocket(u_int16_t port) {
     opt = 1;
     addrlen = sizeof(address);
+    memset(buffer, '\0', sizeof buffer);
 
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
         log_error("socket failed");
@@ -70,7 +71,7 @@ void startCommunication() {
             if (cSocket.socket[i] != 0 && FD_ISSET(sd, &socketDs)) {
                 //Check if it was for closing , and also read the
                 //incoming message
-                if (read(sd, buffer, BUFFER_SIZE) == 0) {
+                if (recv(sd, buffer, BUFFER_SIZE, 0) == 0) {
 
                     //Somebody disconnected , get his details and print
                     getpeername(sd, (struct sockaddr *) &address, \
@@ -86,17 +87,43 @@ void startCommunication() {
                     pthread_mutex_unlock(&cSocket.lock);
 
                 } else {
-                    log_debug(buffer);
-                    char *hello = "Hello from Server";
-                    send(sd, hello, strlen(hello), 0);
-                    //set the string terminating NULL byte on the end
-                    //of the data read
-//                    buffer[valread] = '\0';
-//                    send(sd, buffer, strlen(buffer), 0);
+                    log_debug("Client number %d sent: %s", cSocket.socket[i], buffer);
+
+                    int pomType;
+                    sscanf(buffer, "%d ", &pomType);
+
+                    communication((enum communication_type) pomType);
+
+                    log_debug("Sending to client : %d data : %s ", cSocket.socket[i], buffer);
+                    send(cSocket.socket[i], buffer, BUFFER_SIZE, 0);
                 }
             }
         }
     }
+}
+
+void communication(enum communication_type commuType) {
+
+    switch (commuType) {
+        case LOGIN:
+            log_debug("LOGIN");
+            loginFromClient();
+        default:
+            log_debug("DEFAULT");
+    }
+}
+
+void loginFromClient() {
+    int pomT, pomR;
+    char nick[50];
+    char password[500];
+    sscanf(buffer, "%d %d %s %s", &pomT, &pomR, nick, password);
+
+    enum result_code a = login(nick, password);
+    memset(buffer, '\0', sizeof buffer);
+
+    sprintf(buffer, "%d %d", LOGIN, a);
+
 }
 
 void setSocketToFD() {

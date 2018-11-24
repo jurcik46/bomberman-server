@@ -6,10 +6,6 @@
 #include <stdio.h>
 #include <string.h>
 
-//#include <sqlite3.h>
-
-
-
 void initTables() {
     sqlite3_open(DB_NAME, &db);
 
@@ -67,7 +63,7 @@ void initTables() {
     sqlite3_close(db);
 }
 
-int registration(char *nick, char *heslo) {
+enum result_code registration(char *nick, char *heslo) {
     enum result_code result;
     result = ZERO;
     sqlite3_open(DB_NAME, &db);
@@ -96,7 +92,7 @@ int registration(char *nick, char *heslo) {
     return result;
 }
 
-int login(char *nick, char *heslo) {
+enum result_code login(char *nick, char *heslo) {
     enum result_code result;
     result = ZERO;
 
@@ -124,7 +120,7 @@ int login(char *nick, char *heslo) {
         log_debug("Id %d \t Nick: %s \t Password: %s", tmpId, tmpNick, tmpPswd);
 
         if (strcmp(heslo, (const char *) tmpPswd) == 0) {
-            result = OK;
+            result = OKEJ;
         } else {
             result = UNAUTHORIZED;
         }

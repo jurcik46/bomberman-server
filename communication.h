@@ -13,7 +13,10 @@
 #include <arpa/inet.h>
 #include <sys/time.h>
 
+
 #include "logging/log.h"
+#include "constants.h"
+#include "database.h"
 
 #define BUFFER_SIZE 1024
 #define MAX_CLIENT 10
@@ -63,5 +66,8 @@ void closeSocket();
 
 void startCommunication();
 
+void communication(enum communication_type commuType);
+
+void loginFromClient();
 
 #endif //BOMBERMAN_SERVER_COMMUNICATION_H
