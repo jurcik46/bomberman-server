@@ -66,9 +66,9 @@ void startCommunication() {
 
         //else its some IO operation on some other socket
         for (int i = 0; i < MAX_CLIENT; i++) {
-            sd = cSocket.socket[i];
+            sd = cSocket.client[i].socket;
 
-            if (cSocket.socket[i] != 0 && FD_ISSET(sd, &socketDs)) {
+            if (cSocket.client[i].socket != 0 && FD_ISSET(sd, &socketDs)) {
                 //Check if it was for closing , and also read the
                 //incoming message
                 if (recv(sd, buffer, BUFFER_SIZE, 0) == 0) {
@@ -76,50 +76,63 @@ void startCommunication() {
                     //Somebody disconnected , get his details and print
                     getpeername(sd, (struct sockaddr *) &address, \
                         (socklen_t *) &addrlen);
-                    log_warn("Host disconnected , ip %s , port %d ",
-                             inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+                    log_warn("Host disconnected , ip %s , port %d , socket %d , nick %s",
+                             inet_ntoa(address.sin_addr), ntohs(address.sin_port),
+                             cSocket.client[i].socket, cSocket.client[i].name);
 
                     //Close the socket and mark as 0 in list for reuse
                     pthread_mutex_lock(&cSocket.lock);
-                    close(cSocket.socket[i]);
-                    cSocket.socket[i] = 0;
+                    close(cSocket.client[i].socket);
+                    cSocket.client[i].socket = 0;
+                    memset(cSocket.client[i].name, '\0', sizeof cSocket.client[i].name);
                     cSocket.count--;
                     pthread_mutex_unlock(&cSocket.lock);
 
                 } else {
-                    log_debug("Client number %d sent: %s", cSocket.socket[i], buffer);
+                    log_debug("Client number %d , name %s , sent: %s",
+                              cSocket.client[i].socket, cSocket.client[i].name, buffer);
 
                     int pomType;
                     sscanf(buffer, "%d ", &pomType);
 
-                    communication((enum communication_type) pomType);
+                    communication((enum communication_type) pomType,
+                                  &cSocket.client[i]);
 
-                    log_debug("Sending to client : %d data : %s ", cSocket.socket[i], buffer);
-                    send(cSocket.socket[i], buffer, BUFFER_SIZE, 0);
+                    log_debug("Sending to client : %d , name %s , data : %s ",
+                              cSocket.client[i].socket, cSocket.client[i].name, buffer);
+                    send(cSocket.client[i].socket, buffer, BUFFER_SIZE, 0);
                 }
             }
         }
     }
 }
 
-void communication(enum communication_type commuType) {
+void communication(enum communication_type commuType, ClientInfo *client) {
 
     switch (commuType) {
         case LOGIN:
             log_debug("LOGIN");
-            loginFromClient();
+            loginFromClient(client);
+            break;
+        case CREATE_GAME:
+            log_debug("CREATE GAME");
+
+            break;
         default:
             log_debug("DEFAULT");
     }
 }
 
-void loginFromClient() {
+void loginFromClient(ClientInfo *cleint) {
     int pomT, pomR;
-    char nick[50];
-    char password[500];
+    char nick[NAME_LENGTH];
+    char password[PASSWORD_LENGTH];
     sscanf(buffer, "%d %d %s %s", &pomT, &pomR, nick, password);
 
     enum result_code a = login(nick, password);
+    if (a == CREATED || a == OKEJ) {
+        strcpy(cleint->name, nick);
+    }
     memset(buffer, '\0', sizeof buffer);
 
     sprintf(buffer, "%d %d", LOGIN, a);
@@ -130,7 +143,7 @@ void setSocketToFD() {
     //add child sockets to set
     for (int i = 0; i < MAX_CLIENT; i++) {
         //socket descriptor
-        sd = cSocket.socket[i];
+        sd = cSocket.client[i].socket;
 
         //if valid socket descriptor then add to read list
         if (sd > 0)
@@ -164,14 +177,13 @@ void *accpetSocketThreadFun(void *arg) {
 
         for (int i = 0; i < MAX_CLIENT; i++) {
 
-            if (data->socket[i] == 0) {
-                data->socket[i] = new_socket;
+            if (data->client[i].socket == 0) {
+                data->client[i].socket = new_socket;
                 data->count++;
 
                 log_info("New Socket Added Count %d Id socket %d ", data->count, new_socket);
                 break;
             }
-
         }
         pthread_mutex_unlock(&data->lock);
 
@@ -188,7 +200,7 @@ void closeSocket() {
     cSocket.end = true;
 
     for (int i = 0; i < MAX_CLIENT; i++) {
-        close(cSocket.socket[i]);
+        close(cSocket.client[i].socket);
         cSocket.count--;
     }
 
