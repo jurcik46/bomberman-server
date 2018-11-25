@@ -38,6 +38,7 @@ int main(int argc, char *argv[]) {
 
     FILE *logFile = fopen(LOG_FILE_PATH, "w+");
     loggerInit(logFile);
+    initTables();
 
 //    int someInt = 222;
 //    int someInst = 333;
