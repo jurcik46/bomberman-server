@@ -38,37 +38,40 @@ void initSocket(u_int16_t port) {
     /**
      * Init new thread for accepting new clients connnections
      */
-    cSocket.end = false;
-    cSocket.count = 0;
-    pthread_mutex_init(&cSocket.lock, NULL);
+    cSockets.end = false;
+    cSockets.count = 0;
+    pthread_mutex_init(&cSockets.lock, NULL);
 
-    pthread_create(&acceptSocketThread, NULL, &accpetSocketThreadFun, &cSocket);
+    pthread_create(&acceptSocketThread, NULL, &accpetSocketThreadFun, &cSockets);
 
 }
 
 void startCommunication() {
     int a = 1;
+    struct timeval tv;
+    tv.tv_usec = 1;
     while (a) {
         FD_ZERO(&socketDs);
 
         setSocketToFD();
-        if (cSocket.count == 0) {
+        if (cSockets.count == 0) {
+            log_error("No clients connected waiting");
             sleep(5);
             continue;
         }
 
-        activity = select(max_sd + 1, &socketDs, NULL, NULL, NULL);
+        activity = select(max_sd + 1, &socketDs, NULL, NULL, &tv);
 
         if ((activity < 0) && (errno != EINTR)) {
             log_error("Select Socket Activity error");
-            continue;
+//            continue;
         }
 
         //else its some IO operation on some other socket
         for (int i = 0; i < MAX_CLIENT; i++) {
-            sd = cSocket.socket[i];
+            sd = cSockets.client[i].socket;
 
-            if (cSocket.socket[i] != 0 && FD_ISSET(sd, &socketDs)) {
+            if (sd != 0 && FD_ISSET(sd, &socketDs)) {
                 //Check if it was for closing , and also read the
                 //incoming message
                 if (recv(sd, buffer, BUFFER_SIZE, 0) == 0) {
@@ -76,53 +79,79 @@ void startCommunication() {
                     //Somebody disconnected , get his details and print
                     getpeername(sd, (struct sockaddr *) &address, \
                         (socklen_t *) &addrlen);
-                    log_warn("Host disconnected , ip %s , port %d ",
-                             inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+                    log_warn("Host disconnected , ip %s , port %d , socket %d , nick %s",
+                             inet_ntoa(address.sin_addr), ntohs(address.sin_port),
+                             sd, cSockets.client[i].name);
 
                     //Close the socket and mark as 0 in list for reuse
-                    pthread_mutex_lock(&cSocket.lock);
-                    close(cSocket.socket[i]);
-                    cSocket.socket[i] = 0;
-                    cSocket.count--;
-                    pthread_mutex_unlock(&cSocket.lock);
+                    pthread_mutex_lock(&cSockets.lock);
+                    close(sd);
+                    cSockets.client[i].socket = 0;
+//                    sd = 0 ;
+                    memset(cSockets.client[i].name, '\0', sizeof cSockets.client[i].name);
+                    cSockets.count--;
+                    pthread_mutex_unlock(&cSockets.lock);
 
                 } else {
-                    log_debug("Client number %d sent: %s", cSocket.socket[i], buffer);
+                    log_debug("Client number %d , name %s , sent: %s",
+                              sd, cSockets.client[i].name, buffer);
 
                     int pomType;
                     sscanf(buffer, "%d ", &pomType);
 
-                    communication((enum communication_type) pomType);
+                    communication((enum communication_type) pomType,
+                                  &cSockets.client[i]);
 
-                    log_debug("Sending to client : %d data : %s ", cSocket.socket[i], buffer);
-                    send(cSocket.socket[i], buffer, BUFFER_SIZE, 0);
+                    log_debug("Sending to client id : %d , name %s , data : %s ",
+                              sd, cSockets.client[i].name, buffer);
+                    send(sd, buffer, BUFFER_SIZE, 0);
                 }
             }
         }
     }
 }
 
-void communication(enum communication_type commuType) {
+void communication(enum communication_type commuType, ClientInfo *client) {
 
     switch (commuType) {
         case LOGIN:
             log_debug("LOGIN");
-            loginFromClient();
+            loginFromClient(client);
+            break;
+        case REGISTRATION:
+            log_debug("REGISTRATION");
+
+            break;
+        case CREATE_GAME:
+            log_debug("CREATE GAME");
+            createGameFromClient(client);
+            break;
         default:
             log_debug("DEFAULT");
     }
 }
 
-void loginFromClient() {
+void loginFromClient(ClientInfo *client) {
     int pomT, pomR;
-    char nick[50];
-    char password[500];
+    char nick[NAME_LENGTH];
+    char password[PASSWORD_LENGTH];
     sscanf(buffer, "%d %d %s %s", &pomT, &pomR, nick, password);
 
     enum result_code a = login(nick, password);
+    if (a == CREATED || a == OKEJ) {
+        strcpy(client->name, nick);
+    }
     memset(buffer, '\0', sizeof buffer);
 
     sprintf(buffer, "%d %d", LOGIN, a);
+
+}
+
+void createGameFromClient(ClientInfo *client){
+
+    memset(buffer, '\0', sizeof buffer);
+
+    sprintf(buffer, "%d %d", CREATE_GAME, CREATED);
 
 }
 
@@ -130,7 +159,7 @@ void setSocketToFD() {
     //add child sockets to set
     for (int i = 0; i < MAX_CLIENT; i++) {
         //socket descriptor
-        sd = cSocket.socket[i];
+        sd = cSockets.client[i].socket;
 
         //if valid socket descriptor then add to read list
         if (sd > 0)
@@ -164,14 +193,13 @@ void *accpetSocketThreadFun(void *arg) {
 
         for (int i = 0; i < MAX_CLIENT; i++) {
 
-            if (data->socket[i] == 0) {
-                data->socket[i] = new_socket;
+            if (data->client[i].socket == 0) {
+                data->client[i].socket = new_socket;
                 data->count++;
-
+//                setSocketToFD();
                 log_info("New Socket Added Count %d Id socket %d ", data->count, new_socket);
                 break;
             }
-
         }
         pthread_mutex_unlock(&data->lock);
 
@@ -184,18 +212,18 @@ void *accpetSocketThreadFun(void *arg) {
 
 void closeSocket() {
 
-    pthread_mutex_lock(&cSocket.lock);
-    cSocket.end = true;
+    pthread_mutex_lock(&cSockets.lock);
+    cSockets.end = true;
 
     for (int i = 0; i < MAX_CLIENT; i++) {
-        close(cSocket.socket[i]);
-        cSocket.count--;
+        close(cSockets.client[i].socket);
+        cSockets.count--;
     }
 
-    pthread_mutex_unlock(&cSocket.lock);
+    pthread_mutex_unlock(&cSockets.lock);
 
     close(server_fd);
 
-    pthread_mutex_destroy(&cSocket.lock);
+    pthread_mutex_destroy(&cSockets.lock);
 
 }

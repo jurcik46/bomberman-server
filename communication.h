@@ -19,19 +19,29 @@
 #include "database.h"
 
 #define BUFFER_SIZE 1024
-#define MAX_CLIENT 10
+#define MAX_CLIENT 20
+#define NAME_LENGTH 50
+#define PASSWORD_LENGTH 50
+
 /**
  * Client socket
  */
+
+typedef struct clientInfo {
+    int socket;
+    char name[NAME_LENGTH];
+
+} ClientInfo;
+
 typedef struct clientsSockets {
-    int socket[MAX_CLIENT];
+    ClientInfo client[MAX_CLIENT];
     int count;
     _Bool end;
 
     pthread_mutex_t lock;
 } ClientsSockets;
 
-ClientsSockets cSocket;
+ClientsSockets cSockets;
 pthread_t acceptSocketThread;
 
 /**
@@ -66,8 +76,10 @@ void closeSocket();
 
 void startCommunication();
 
-void communication(enum communication_type commuType);
+void communication(enum communication_type commuType, ClientInfo *client);
 
 void loginFromClient();
+
+void createGameFromClient(ClientInfo *client);
 
 #endif //BOMBERMAN_SERVER_COMMUNICATION_H
