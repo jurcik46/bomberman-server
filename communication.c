@@ -48,20 +48,23 @@ void initSocket(u_int16_t port) {
 
 void startCommunication() {
     int a = 1;
+    struct timeval tv;
+    tv.tv_usec = 1;
     while (a) {
         FD_ZERO(&socketDs);
 
         setSocketToFD();
         if (cSockets.count == 0) {
+            log_error("No clients connected waiting");
             sleep(5);
             continue;
         }
 
-        activity = select(max_sd + 1, &socketDs, NULL, NULL, NULL);
+        activity = select(max_sd + 1, &socketDs, NULL, NULL, &tv);
 
         if ((activity < 0) && (errno != EINTR)) {
             log_error("Select Socket Activity error");
-            continue;
+//            continue;
         }
 
         //else its some IO operation on some other socket
@@ -83,7 +86,8 @@ void startCommunication() {
                     //Close the socket and mark as 0 in list for reuse
                     pthread_mutex_lock(&cSockets.lock);
                     close(sd);
-                    sd = 0;
+                    cSockets.client[i].socket = 0;
+//                    sd = 0 ;
                     memset(cSockets.client[i].name, '\0', sizeof cSockets.client[i].name);
                     cSockets.count--;
                     pthread_mutex_unlock(&cSockets.lock);
@@ -192,7 +196,7 @@ void *accpetSocketThreadFun(void *arg) {
             if (data->client[i].socket == 0) {
                 data->client[i].socket = new_socket;
                 data->count++;
-
+//                setSocketToFD();
                 log_info("New Socket Added Count %d Id socket %d ", data->count, new_socket);
                 break;
             }
