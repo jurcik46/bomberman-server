@@ -41,7 +41,7 @@ typedef struct clientsSockets {
     pthread_mutex_t lock;
 } ClientsSockets;
 
-ClientsSockets cSocket;
+ClientsSockets cSockets;
 pthread_t acceptSocketThread;
 
 /**
@@ -79,5 +79,7 @@ void startCommunication();
 void communication(enum communication_type commuType, ClientInfo *client);
 
 void loginFromClient();
+
+void createGameFromClient(ClientInfo *client);
 
 #endif //BOMBERMAN_SERVER_COMMUNICATION_H
