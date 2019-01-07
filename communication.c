@@ -102,7 +102,7 @@ void startCommunication() {
                     communication((enum communication_type) pomType,
                                   &cSockets.client[i]);
 
-                    log_debug("Sending to client id : %d , name %s , data : %s ",
+                    log_debug("Sending to client SOCKET_ID : %d , name %s , data : %s ",
                               sd, cSockets.client[i].name, buffer);
                     send(sd, buffer, BUFFER_SIZE, 0);
                 }
@@ -140,19 +140,60 @@ void loginFromClient(ClientInfo *client) {
     enum result_code a = login(nick, password);
     if (a == CREATED || a == OKEJ) {
         strcpy(client->name, nick);
+        client->id = getPlayerId(nick);
     }
     memset(buffer, '\0', sizeof buffer);
 
-    sprintf(buffer, "%d %d", LOGIN, a);
+    sprintf(buffer, "%d %d %d", LOGIN, a , client->id);
 
 }
 
 void createGameFromClient(ClientInfo *client){
+    srand(time(NULL));   // Initialization, should only be called once.
+    _Bool done;
+    int r = 0;
+        do{
+            int r = rand() +1 ;
+            done = true;
 
-    memset(buffer, '\0', sizeof buffer);
+            for(int i = 0; i < MAX_CLIENT; ++i){
+                if(gameServers[i].gameId == r){
+                    done = false;
+                }
+            }
+        }
+        while(!done);
 
-    sprintf(buffer, "%d %d", CREATE_GAME, CREATED);
+    int gameSlot = getFreeGameSlot();
 
+
+    if(gameSlot != -1){
+
+    gameServers[gameSlot].gameId = r;
+    gameServers[gameSlot].clients[0] = client;
+    gameServers[gameSlot].gameId = client->id;
+    int pom;
+    sscanf(buffer, "%d %d %s %d %d", &pom, &pom, gameServers[gameSlot].name,
+            &gameServers[gameSlot].mapNumber, &gameServers[gameSlot].maxPlayerCount);
+        memset(buffer, '\0', sizeof buffer);
+        sprintf(buffer, "%d %d %d %s %d %d", CREATE_GAME, CREATED, gameServers[gameSlot].gameId, gameServers[gameSlot].name,
+                gameServers[gameSlot].maxPlayerCount, gameServers[gameSlot].mapNumber);
+    }else{
+        memset(buffer, '\0', sizeof buffer);
+        sprintf(buffer, "%d %d", CREATE_GAME, SERVICE_UNAVAILABLE);
+    }
+//TODO DESTROY LOBY AFTER USER LEAVE OR DISCONNECT
+}
+
+int getFreeGameSlot(){
+    int k =-1;
+    for (int i = 0; i < MAX_CLIENT; ++i) {
+        if(gameServers[i].gameId == 0){
+            k = i;
+            break;
+        }
+    }
+    return k;
 }
 
 void setSocketToFD() {

@@ -12,7 +12,7 @@
 #include <errno.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
-
+#include <time.h>
 
 #include "logging/log.h"
 #include "constants.h"
@@ -22,6 +22,9 @@
 #define MAX_CLIENT 20
 #define NAME_LENGTH 50
 #define PASSWORD_LENGTH 50
+#define GAME_NAME_LENGTH 20
+
+#define MAX_GAME_PLAYERS 4
 
 /**
  * Client socket
@@ -29,6 +32,7 @@
 
 typedef struct clientInfo {
     int socket;
+    int id;
     char name[NAME_LENGTH];
 
 } ClientInfo;
@@ -61,6 +65,23 @@ int max_sd;
 int sd;
 int activity;
 
+
+/**
+ * Game Servers
+ */
+
+typedef struct  gameServer{
+    int adminId;
+    int gameId;
+    char name[GAME_NAME_LENGTH];
+    int mapNumber;
+    int maxPlayerCount;
+    ClientInfo * clients[MAX_GAME_PLAYERS];
+} GameServers;
+
+
+GameServers gameServers[MAX_CLIENT];
+
 /**
  *
  * @param port
@@ -81,5 +102,6 @@ void communication(enum communication_type commuType, ClientInfo *client);
 void loginFromClient();
 
 void createGameFromClient(ClientInfo *client);
+int getFreeGameSlot();
 
 #endif //BOMBERMAN_SERVER_COMMUNICATION_H
