@@ -55,7 +55,7 @@ void startCommunication() {
 
         setSocketToFD();
         if (cSockets.count == 0) {
-            log_error("No clients connected waiting");
+            log_info("No clients connected waiting");
             sleep(5);
             continue;
         }
