@@ -22,5 +22,7 @@ enum result_code registration(char *nick, char *heslo);
 
 enum result_code login(char *nick, char *heslo);
 
+int getPlayerId(char *nick);
+
 
 #endif //BOMBERMAN_SERVER_DATABASE_H
