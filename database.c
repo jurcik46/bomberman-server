@@ -141,6 +141,37 @@ enum result_code login(char *nick, char *heslo) {
 }
 
 
+int getPlayerId(char *nick){
+    int id = 0;
+    sqlite3_open(DB_NAME, &db);
+    sqlite3_stmt *stmt;
+    char sql[1000] = "SELECT `id` as user_id,`nick` FROM `Users` WHERE `nick` = '";
+    strcat(sql, nick);
+    strcat(sql, "';");
+
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        log_error("Chyba pri priprave sql prikazu:  %s", sqlite3_errmsg(db));
+        id = 0;
+    } else {
+        log_debug("GET PLAYER ID(select): sqlite3_preper succes");
+    }
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        id = sqlite3_column_int(stmt, 0);
+        const unsigned char *tmpNick = sqlite3_column_text(stmt, 1);
+        log_debug("Id %d \t Nick: %s", id, tmpNick);
+    }
+
+    if (id == 0) {
+        log_debug("GET PLAYER ID: pre daneho uzivatela sa zaznam nenasiel Nick: %s", nick);
+    }
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+    return id;
+}
+
+
+
 int callback(void *NotUsed, int argc, char **argv, char **azColName) {
     for (int i = 0; i < argc; i++) {
         printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");

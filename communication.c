@@ -102,9 +102,10 @@ void startCommunication() {
                     communication((enum communication_type) pomType,
                                   &cSockets.client[i]);
 
-                    log_debug("Sending to client id : %d , name %s , data : %s ",
+                    log_debug("Sending to client SOCKET_ID : %d , name %s , data : %s ",
                               sd, cSockets.client[i].name, buffer);
                     send(sd, buffer, BUFFER_SIZE, 0);
+                    memset(buffer, '\0', sizeof buffer);
                 }
             }
         }
@@ -126,6 +127,10 @@ void communication(enum communication_type commuType, ClientInfo *client) {
             log_debug("CREATE GAME");
             createGameFromClient(client);
             break;
+        case FIND_SERVERS:
+            log_debug("FIND SERVERS");
+            findServersFromClient(client);
+            break;
         default:
             log_debug("DEFAULT");
     }
@@ -140,18 +145,85 @@ void loginFromClient(ClientInfo *client) {
     enum result_code a = login(nick, password);
     if (a == CREATED || a == OKEJ) {
         strcpy(client->name, nick);
+        client->id = getPlayerId(nick);
     }
     memset(buffer, '\0', sizeof buffer);
 
-    sprintf(buffer, "%d %d", LOGIN, a);
-
+    sprintf(buffer, "%d %d %d", LOGIN, a , client->id);
 }
 
 void createGameFromClient(ClientInfo *client){
+    srand(time(NULL));
+    _Bool done;
+    int r = 0;
+        do{
+             r = rand() +1 ;
+            done = true;
 
-    memset(buffer, '\0', sizeof buffer);
+            for(int i = 0; i < MAX_CLIENT; ++i){
+                if(gameServers[i].gameId == r){
+                    done = false;
+                }
+            }
+        }
+        while(!done);
 
-    sprintf(buffer, "%d %d", CREATE_GAME, CREATED);
+    int gameSlot = getFreeGameSlot();
+
+    if(gameSlot != -1){
+
+    gameServers[gameSlot].gameId = r;
+    gameServers[gameSlot].clients[0] = client;
+    gameServers[gameSlot].adminId = client->id;
+    int pom;
+    sscanf(buffer, "%d %d %s %d %d", &pom, &pom, gameServers[gameSlot].name,
+            &gameServers[gameSlot].mapNumber, &gameServers[gameSlot].maxPlayerCount);
+//        memset(buffer, '\0', sizeof buffer);
+        sprintf(buffer, "%d %d %d %s %d %d", CREATE_GAME, CREATED, gameServers[gameSlot].gameId, gameServers[gameSlot].name,
+                gameServers[gameSlot].maxPlayerCount, gameServers[gameSlot].mapNumber);
+    }else{
+//        memset(buffer, '\0', sizeof buffer);
+        sprintf(buffer, "%d %d", CREATE_GAME, SERVICE_UNAVAILABLE);
+    }
+//TODO DESTROY LOBBY AFTER USER LEAVE OR DISCONNECT
+}
+
+int getFreeGameSlot(){
+    int k =-1;
+    for (int i = 0; i < MAX_CLIENT; ++i) {
+        if(gameServers[i].gameId == 0){
+            k = i;
+            break;
+        }
+    }
+    return k;
+}
+
+void findServersFromClient(ClientInfo *client){
+    int pomT, pomR, count;
+    sscanf(buffer, "%d %d %d", &pomT, &pomR, &count);
+    if(count >19 ){
+        sprintf(buffer, "%d %d", FIND_SERVERS, DONE);
+        return;
+    }
+    int pomC =0;
+
+    for (int i = 0; i < MAX_CLIENT; ++i) {
+        if(gameServers[i].gameId != 0 ){
+            if(pomC == count){
+                sprintf(buffer, "%d %d %d %s %d %d %d", FIND_SERVERS, ZERO,
+                        gameServers[i].gameId,
+                        gameServers[i].name,
+                        gameServers[i].mapNumber,
+                        gameServers[i].maxPlayerCount,
+                        gameServers[i].adminId);
+                return;
+            }
+            pomC++;
+            log_debug("pomC  %d", pomC);
+        }
+    }
+    sprintf(buffer, "%d %d", FIND_SERVERS, DONE);
 
 }
 
