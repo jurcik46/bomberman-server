@@ -237,7 +237,7 @@ void findServersFromClient(ClientInfo *client) {
                 return;
             }
             pomC++;
-            log_debug("pomC  %d", pomC);
+            log_debug("pomC  %d  index %d name %s  Id  %d", pomC, i, gameServers[i].name, gameServers[i].gameId);
         }
     }
     sprintf(buffer, "%d %d", FIND_SERVERS, DONE);
@@ -320,7 +320,7 @@ void leaveLobbyFromClient(ClientInfo *client) {
         client->admin = false;
         /// reset gameServer
         gameServers[gameSlot].gameId = 0;
-        gameServers[gameSlot] = emptyServer;
+//        gameServers[gameSlot] = emptyServer;
     }
 
 }
