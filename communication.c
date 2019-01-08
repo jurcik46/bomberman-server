@@ -131,6 +131,9 @@ void communication(enum communication_type commuType, ClientInfo *client) {
             log_debug("FIND SERVERS");
             findServersFromClient(client);
             break;
+        case JOIN_LOBBY:
+            log_debug("Player JOIN TO GAME");
+            joinGameFromClient(client);
         default:
             log_debug("DEFAULT");
     }
@@ -149,49 +152,50 @@ void loginFromClient(ClientInfo *client) {
     }
     memset(buffer, '\0', sizeof buffer);
 
-    sprintf(buffer, "%d %d %d", LOGIN, a , client->id);
+    sprintf(buffer, "%d %d %d", LOGIN, a, client->id);
 }
 
-void createGameFromClient(ClientInfo *client){
+void createGameFromClient(ClientInfo *client) {
     srand(time(NULL));
     _Bool done;
     int r = 0;
-        do{
-             r = rand() % 90 +1 ;
-            done = true;
+    do {
+        r = rand() % 90 + 1;
+        done = true;
 
-            for(int i = 0; i < MAX_CLIENT; ++i){
-                if(gameServers[i].gameId == r){
-                    done = false;
-                }
+        for (int i = 0; i < MAX_CLIENT; ++i) {
+            if (gameServers[i].gameId == r) {
+                done = false;
             }
         }
-        while(!done);
+    } while (!done);
 
     int gameSlot = getFreeGameSlot();
 
-    if(gameSlot != -1){
+    if (gameSlot != -1) {
 
-    gameServers[gameSlot].gameId = r;
-    gameServers[gameSlot].clients[0] = client;
-    gameServers[gameSlot].adminId = client->id;
-    int pom;
-    sscanf(buffer, "%d %d %s %d %d", &pom, &pom, gameServers[gameSlot].name,
-            &gameServers[gameSlot].mapNumber, &gameServers[gameSlot].maxPlayerCount);
+        gameServers[gameSlot].gameId = r;
+        gameServers[gameSlot].clients[0] = client;
+        gameServers[gameSlot].adminId = client->id;
+        int pom;
+        sscanf(buffer, "%d %d %s %d %d", &pom, &pom, gameServers[gameSlot].name,
+               &gameServers[gameSlot].mapNumber, &gameServers[gameSlot].maxPlayerCount);
 //        memset(buffer, '\0', sizeof buffer);
-        sprintf(buffer, "%d %d %d %s %d %d", CREATE_GAME, CREATED, gameServers[gameSlot].gameId, gameServers[gameSlot].name,
+        sprintf(buffer, "%d %d %d %s %d %d", CREATE_GAME, CREATED, gameServers[gameSlot].gameId,
+                gameServers[gameSlot].name,
                 gameServers[gameSlot].maxPlayerCount, gameServers[gameSlot].mapNumber);
-    }else{
+        gameServers[gameSlot].playerCount = 1;
+    } else {
 //        memset(buffer, '\0', sizeof buffer);
         sprintf(buffer, "%d %d", CREATE_GAME, SERVICE_UNAVAILABLE);
     }
 //TODO DESTROY LOBBY AFTER USER LEAVE OR DISCONNECT
 }
 
-int getFreeGameSlot(){
-    int k =-1;
+int getFreeGameSlot() {
+    int k = -1;
     for (int i = 0; i < MAX_CLIENT; ++i) {
-        if(gameServers[i].gameId == 0){
+        if (gameServers[i].gameId == 0) {
             k = i;
             break;
         }
@@ -199,18 +203,18 @@ int getFreeGameSlot(){
     return k;
 }
 
-void findServersFromClient(ClientInfo *client){
+void findServersFromClient(ClientInfo *client) {
     int pomT, pomR, count;
     sscanf(buffer, "%d %d %d", &pomT, &pomR, &count);
-    if(count >19 ){
+    if (count > 19) {
         sprintf(buffer, "%d %d", FIND_SERVERS, DONE);
         return;
     }
-    int pomC =0;
+    int pomC = 0;
 
     for (int i = 0; i < MAX_CLIENT; ++i) {
-        if(gameServers[i].gameId != 0 ){
-            if(pomC == count){
+        if (gameServers[i].gameId != 0) {
+            if (pomC == count) {
                 sprintf(buffer, "%d %d %d %s %d %d %d", FIND_SERVERS, ZERO,
                         gameServers[i].gameId,
                         gameServers[i].name,
@@ -225,6 +229,55 @@ void findServersFromClient(ClientInfo *client){
     }
     sprintf(buffer, "%d %d", FIND_SERVERS, DONE);
 
+
+}
+
+void joinGameFromClient(ClientInfo *client) {
+    int pomT, pomR, gameId;
+
+    sscanf(buffer, "%d %d %d", &pomT, &pomR, &gameId);
+
+    enum result_code result = OKEJ;
+    char data[BUFFER_SIZE];
+    memset(buffer, '\0', sizeof buffer);
+    int gameIndex = existGame(gameId);
+    if (gameIndex == -1) {
+        result = NOT_FOUND;
+    } else if (gameServers[gameIndex].playerCount == gameServers[gameIndex].maxPlayerCount) {
+        result = SERVICE_UNAVAILABLE;
+    }
+
+    if (result == OKEJ) {
+        sprintf(buffer, "%d %d %d %s", JOIN_LOBBY, CREATED, client->id, client->name);
+        for (int i = 0; i < gameServers[gameIndex].playerCount; ++i) {
+            log_debug("SEND INFO FOR PLAYERS IN LOBBY: ID: %d --- %s ", i, buffer);
+
+            send(gameServers[gameIndex].clients[i]->socket, buffer, BUFFER_SIZE, 0);
+        }
+
+        gameServers[gameIndex].clients[gameServers[gameIndex].playerCount] = client;
+        sprintf(data, "%d %s %d %d %d %d", gameServers[gameIndex].gameId,
+                gameServers[gameIndex].name,
+                gameServers[gameIndex].mapNumber,
+                gameServers[gameIndex].playerCount,
+                gameServers[gameIndex].maxPlayerCount,
+                gameServers[gameIndex].adminId);
+        gameServers[gameIndex].playerCount++;
+
+    }
+    sprintf(buffer, "%d %d %s", JOIN_LOBBY, result, data);
+
+}
+
+int existGame(int gameId) {
+    int ret = -1;
+    for (int i = 0; i < MAX_CLIENT; i++) {
+        if (gameServers[i].gameId == gameId) {
+            ret = i;
+            break;
+        }
+    }
+    return ret;
 }
 
 void setSocketToFD() {
