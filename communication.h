@@ -70,13 +70,14 @@ int activity;
  * Game Servers
  */
 
-typedef struct  gameServer{
+typedef struct gameServer {
     int adminId;
     int gameId;
     char name[GAME_NAME_LENGTH];
     int mapNumber;
     int maxPlayerCount;
-    ClientInfo * clients[MAX_GAME_PLAYERS];
+    int playerCount;
+    ClientInfo *clients[MAX_GAME_PLAYERS];
 } GameServers;
 
 
@@ -103,7 +104,13 @@ void loginFromClient();
 
 void createGameFromClient(ClientInfo *client);
 
+
 int getFreeGameSlot();
 
 void findServersFromClient();
+
+void joinGameFromClient(ClientInfo *client);
+
+int existGame(int gameId);
+
 #endif //BOMBERMAN_SERVER_COMMUNICATION_H
