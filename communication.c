@@ -153,11 +153,11 @@ void loginFromClient(ClientInfo *client) {
 }
 
 void createGameFromClient(ClientInfo *client){
-    srand((unsigned int)time(NULL));
+    srand(time(NULL));
     _Bool done;
     int r = 0;
         do{
-            int r = rand() +1 ;
+             r = rand() +1 ;
             done = true;
 
             for(int i = 0; i < MAX_CLIENT; ++i){
@@ -174,7 +174,7 @@ void createGameFromClient(ClientInfo *client){
 
     gameServers[gameSlot].gameId = r;
     gameServers[gameSlot].clients[0] = client;
-    gameServers[gameSlot].gameId = client->id;
+    gameServers[gameSlot].adminId = client->id;
     int pom;
     sscanf(buffer, "%d %d %s %d %d", &pom, &pom, gameServers[gameSlot].name,
             &gameServers[gameSlot].mapNumber, &gameServers[gameSlot].maxPlayerCount);
