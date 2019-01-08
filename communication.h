@@ -102,6 +102,8 @@ void communication(enum communication_type commuType, ClientInfo *client);
 void loginFromClient();
 
 void createGameFromClient(ClientInfo *client);
+
 int getFreeGameSlot();
 
+void findServersFromClient();
 #endif //BOMBERMAN_SERVER_COMMUNICATION_H

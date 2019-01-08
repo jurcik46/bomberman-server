@@ -105,6 +105,7 @@ void startCommunication() {
                     log_debug("Sending to client SOCKET_ID : %d , name %s , data : %s ",
                               sd, cSockets.client[i].name, buffer);
                     send(sd, buffer, BUFFER_SIZE, 0);
+                    memset(buffer, '\0', sizeof buffer);
                 }
             }
         }
@@ -126,6 +127,10 @@ void communication(enum communication_type commuType, ClientInfo *client) {
             log_debug("CREATE GAME");
             createGameFromClient(client);
             break;
+        case FIND_SERVERS:
+            log_debug("FIND SERVERS");
+            findServersFromClient(client);
+            break;
         default:
             log_debug("DEFAULT");
     }
@@ -145,11 +150,10 @@ void loginFromClient(ClientInfo *client) {
     memset(buffer, '\0', sizeof buffer);
 
     sprintf(buffer, "%d %d %d", LOGIN, a , client->id);
-
 }
 
 void createGameFromClient(ClientInfo *client){
-    srand(time(NULL));   // Initialization, should only be called once.
+    srand((unsigned int)time(NULL));
     _Bool done;
     int r = 0;
         do{
@@ -166,7 +170,6 @@ void createGameFromClient(ClientInfo *client){
 
     int gameSlot = getFreeGameSlot();
 
-
     if(gameSlot != -1){
 
     gameServers[gameSlot].gameId = r;
@@ -175,14 +178,14 @@ void createGameFromClient(ClientInfo *client){
     int pom;
     sscanf(buffer, "%d %d %s %d %d", &pom, &pom, gameServers[gameSlot].name,
             &gameServers[gameSlot].mapNumber, &gameServers[gameSlot].maxPlayerCount);
-        memset(buffer, '\0', sizeof buffer);
+//        memset(buffer, '\0', sizeof buffer);
         sprintf(buffer, "%d %d %d %s %d %d", CREATE_GAME, CREATED, gameServers[gameSlot].gameId, gameServers[gameSlot].name,
                 gameServers[gameSlot].maxPlayerCount, gameServers[gameSlot].mapNumber);
     }else{
-        memset(buffer, '\0', sizeof buffer);
+//        memset(buffer, '\0', sizeof buffer);
         sprintf(buffer, "%d %d", CREATE_GAME, SERVICE_UNAVAILABLE);
     }
-//TODO DESTROY LOBY AFTER USER LEAVE OR DISCONNECT
+//TODO DESTROY LOBBY AFTER USER LEAVE OR DISCONNECT
 }
 
 int getFreeGameSlot(){
@@ -194,6 +197,34 @@ int getFreeGameSlot(){
         }
     }
     return k;
+}
+
+void findServersFromClient(ClientInfo *client){
+    int pomT, pomR, count;
+    sscanf(buffer, "%d %d %d", &pomT, &pomR, &count);
+    if(count >19 ){
+        sprintf(buffer, "%d %d", FIND_SERVERS, DONE);
+        return;
+    }
+    int pomC =0;
+
+    for (int i = 0; i < MAX_CLIENT; ++i) {
+        if(gameServers[i].gameId != 0 ){
+            if(pomC == count){
+                sprintf(buffer, "%d %d %d %s %d %d %d", FIND_SERVERS, ZERO,
+                        gameServers[i].gameId,
+                        gameServers[i].name,
+                        gameServers[i].mapNumber,
+                        gameServers[i].maxPlayerCount,
+                        gameServers[i].adminId);
+                return;
+            }
+            pomC++;
+            log_debug("pomC  %d", pomC);
+        }
+    }
+    sprintf(buffer, "%d %d", FIND_SERVERS, DONE);
+
 }
 
 void setSocketToFD() {

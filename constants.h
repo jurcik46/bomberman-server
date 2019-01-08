@@ -6,9 +6,13 @@
 #define BOMBERMAN_SERVER_RESULT_CODE_H
 
 enum result_code {
-    ZERO = 0, OKEJ = 200, CREATED = 201, LAST_DATA = 204, UNAUTHORIZED = 401, INTERNAL_SERVER_ERROR = 500,
+    ZERO = 0,
+    OKEJ = 200,
+    CREATED = 201,
+    DONE = 204,
+    UNAUTHORIZED = 401,
+    INTERNAL_SERVER_ERROR = 500,
     SERVICE_UNAVAILABLE = 503
-
 };
 
 enum communication_type {
