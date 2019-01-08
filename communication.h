@@ -99,7 +99,7 @@ void closeSocket();
 
 void startCommunication();
 
-void communication(enum communication_type commuType, ClientInfo *client);
+_Bool communication(enum communication_type commuType, ClientInfo *client);
 
 void loginFromClient();
 

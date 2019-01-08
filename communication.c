@@ -98,22 +98,20 @@ void startCommunication() {
 
                     int pomType;
                     sscanf(buffer, "%d ", &pomType);
-
-                    communication((enum communication_type) pomType,
-                                  &cSockets.client[i]);
-
-                    log_debug("Sending to client SOCKET_ID : %d , name %s , data : %s ",
-                              sd, cSockets.client[i].name, buffer);
-                    send(sd, buffer, BUFFER_SIZE, 0);
-                    memset(buffer, '\0', sizeof buffer);
+                    if (communication((enum communication_type) pomType, &cSockets.client[i])) {
+                        log_debug("Sending to client SOCKET_ID : %d , name %s , data : %s ",
+                                  sd, cSockets.client[i].name, buffer);
+                        send(sd, buffer, BUFFER_SIZE, 0);
+                        memset(buffer, '\0', sizeof buffer);
+                    }
                 }
             }
         }
     }
 }
 
-void communication(enum communication_type commuType, ClientInfo *client) {
-
+_Bool communication(enum communication_type commuType, ClientInfo *client) {
+    _Bool send = true;
     switch (commuType) {
         case LOGIN:
             log_debug("LOGIN");
@@ -142,10 +140,14 @@ void communication(enum communication_type commuType, ClientInfo *client) {
         case LEAVE_LOBBY:
             log_debug("PLAYER LEFT");
             leaveLobbyFromClient(client);
+            send = false;
             break;
         default:
             log_debug("DEFAULT");
+            send = false;
+            break;
     }
+    return send;
 }
 
 void loginFromClient(ClientInfo *client) {
@@ -308,9 +310,9 @@ void leaveLobbyFromClient(ClientInfo *client) {
     }
 
     playerLeft(gameSlot, client->id);
-    gameServers[gameSlot].playerCount--;
     for (int i = 0; i < gameServers[gameSlot].playerCount; ++i) {
         sprintf(buffer, "%d %d %d", LEAVE_LOBBY, OKEJ, admin ? true : false);
+        log_debug("LEAVE LOBBY send info others : index: %d --- Data: %s ", i, buffer);
         send(gameServers[gameSlot].clients[i]->socket, buffer, BUFFER_SIZE, 0);
     }
 
@@ -356,7 +358,7 @@ void playerLeft(int gameIndex, int playerId) {
         j = playerIndex;
     }
 
-//    gameServers[gameIndex].playerCount--;
+    gameServers[gameIndex].playerCount--;
 }
 
 void setSocketToFD() {
