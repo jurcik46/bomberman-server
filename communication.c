@@ -139,6 +139,10 @@ void communication(enum communication_type commuType, ClientInfo *client) {
             log_debug("GET PLAYERS IN LOBBY");
             getPlayerInLobby();
             break;
+        case LEAVE_LOBBY:
+            log_debug("PLAYER LEFT");
+            leaveLobbyFromClient(client);
+            break;
         default:
             log_debug("DEFAULT");
     }
@@ -154,6 +158,7 @@ void loginFromClient(ClientInfo *client) {
     if (a == CREATED || a == OKEJ) {
         strcpy(client->name, nick);
         client->id = getPlayerId(nick);
+        client->admin = false;
     }
     memset(buffer, '\0', sizeof buffer);
 
@@ -190,6 +195,7 @@ void createGameFromClient(ClientInfo *client) {
                 gameServers[gameSlot].name,
                 gameServers[gameSlot].maxPlayerCount, gameServers[gameSlot].mapNumber);
         gameServers[gameSlot].playerCount = 1;
+        client->admin = true;
     } else {
 //        memset(buffer, '\0', sizeof buffer);
         sprintf(buffer, "%d %d", CREATE_GAME, SERVICE_UNAVAILABLE);
@@ -293,6 +299,30 @@ void joinGameFromClient(ClientInfo *client) {
 
 }
 
+void leaveLobbyFromClient(ClientInfo *client) {
+    int pomT, pomR, gameId, userId, admin, gameSlot;
+    sscanf(buffer, "%d %d %d %d %d", &pomT, &pomR, &gameId, &userId, &admin);
+    gameSlot = existGame(gameId);
+    if (gameSlot == -1) {
+        return;
+    }
+
+    playerLeft(gameSlot, client->id);
+    gameServers[gameSlot].playerCount--;
+    for (int i = 0; i < gameServers[gameSlot].playerCount; ++i) {
+        sprintf(buffer, "%d %d %d", LEAVE_LOBBY, OKEJ, admin ? true : false);
+        send(gameServers[gameSlot].clients[i]->socket, buffer, BUFFER_SIZE, 0);
+    }
+
+    if (client->admin) {
+        client->admin = false;
+        /// reset gameServer
+        gameServers[gameSlot].gameId = 0;
+        gameServers[gameSlot] = emptyServer;
+    }
+
+}
+
 int existGame(int gameId) {
     int ret = -1;
     for (int i = 0; i < MAX_CLIENT; i++) {
@@ -302,6 +332,31 @@ int existGame(int gameId) {
         }
     }
     return ret;
+}
+
+void playerLeft(int gameIndex, int playerId) {
+    int playerIndex = -1;
+
+    for (int i = 0; i < gameServers[gameIndex].playerCount; ++i) {
+        if (gameServers[gameIndex].clients[i]->id == playerId) {
+            playerIndex = i;
+        }
+    }
+
+    if (playerIndex == -1)
+        return;
+    if (playerIndex == gameServers[gameIndex].playerCount - 1) {
+        return;
+    }
+    for (int j = playerIndex; j < gameServers[gameIndex].playerCount; ++j) {
+        ClientInfo *pom = gameServers[gameIndex].clients[j];
+        gameServers[gameIndex].clients[j] = gameServers[gameIndex].clients[j + 1];
+        gameServers[gameIndex].clients[j + 1] = pom;
+        playerIndex = j + 1;
+        j = playerIndex;
+    }
+
+//    gameServers[gameIndex].playerCount--;
 }
 
 void setSocketToFD() {
