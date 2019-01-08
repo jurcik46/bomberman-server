@@ -34,7 +34,7 @@ typedef struct clientInfo {
     int socket;
     int id;
     char name[NAME_LENGTH];
-
+    _Bool admin;
 } ClientInfo;
 
 typedef struct clientsSockets {
@@ -82,6 +82,7 @@ typedef struct gameServer {
 
 
 GameServers gameServers[MAX_CLIENT];
+GameServers emptyServer;
 
 /**
  *
@@ -113,6 +114,10 @@ void getPlayerInLobby();
 
 void joinGameFromClient(ClientInfo *client);
 
+void leaveLobbyFromClient(ClientInfo *client);
+
 int existGame(int gameId);
+
+void playerLeft();
 
 #endif //BOMBERMAN_SERVER_COMMUNICATION_H
