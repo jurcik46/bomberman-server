@@ -157,7 +157,7 @@ void createGameFromClient(ClientInfo *client){
     _Bool done;
     int r = 0;
         do{
-             r = rand() +1 ;
+             r = rand() % 90 +1 ;
             done = true;
 
             for(int i = 0; i < MAX_CLIENT; ++i){
