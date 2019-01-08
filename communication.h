@@ -109,6 +109,8 @@ int getFreeGameSlot();
 
 void findServersFromClient();
 
+void getPlayerInLobby();
+
 void joinGameFromClient(ClientInfo *client);
 
 int existGame(int gameId);

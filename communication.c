@@ -134,6 +134,11 @@ void communication(enum communication_type commuType, ClientInfo *client) {
         case JOIN_LOBBY:
             log_debug("Player JOIN TO GAME");
             joinGameFromClient(client);
+            break;
+        case GET_LOBBY_PLAYER:
+            log_debug("GET PLAYERS IN LOBBY");
+            getPlayerInLobby();
+            break;
         default:
             log_debug("DEFAULT");
     }
@@ -229,6 +234,25 @@ void findServersFromClient(ClientInfo *client) {
     }
     sprintf(buffer, "%d %d", FIND_SERVERS, DONE);
 
+
+}
+
+void getPlayerInLobby() {
+
+    int pomT, pomR, count, gameId;
+    sscanf(buffer, "%d %d %d %d", &pomT, &pomR, &count, &gameId);
+    int gameSlot = existGame(gameId);
+    if (gameSlot == -1) {
+        sprintf(buffer, "%d %d", GET_LOBBY_PLAYER, DONE);
+        return;
+    }
+    log_debug("Player count in lobby %d  ", gameServers[gameSlot].playerCount);
+    if (count < gameServers[gameSlot].playerCount) {
+        sprintf(buffer, "%d %d %d %s", GET_LOBBY_PLAYER, ZERO,
+                gameServers[gameSlot].clients[count]->id, gameServers[gameSlot].clients[count]->name);
+        return;
+    }
+    sprintf(buffer, "%d %d", GET_LOBBY_PLAYER, DONE);
 
 }
 
