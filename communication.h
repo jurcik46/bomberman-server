@@ -101,6 +101,8 @@ void leaveLobbyDisconnect(ClientInfo *client);
 
 static int existGame(int gameId);
 
+void sendMapToClient(ClientInfo *clinet);
+
 static void playerLeft(int gameIndex, int playerId);
 
 #endif //BOMBERMAN_SERVER_COMMUNICATION_H

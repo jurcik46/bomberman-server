@@ -23,7 +23,8 @@ enum communication_type {
     GET_LOBBY_PLAYER,
     FIND_SERVERS,
     JOIN_LOBBY,
-    LEAVE_LOBBY
+    LEAVE_LOBBY,
+    MAP_DOWNLOAD
 };
 
 

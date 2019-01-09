@@ -169,6 +169,10 @@ _Bool communication(enum communication_type commuType, ClientInfo *client) {
             leaveLobbyFromClient(client);
             send = false;
             break;
+        case MAP_DOWNLOAD:
+            log_debug("SEND MAP TO CLIENT");
+            sendMapToClient(client);
+            break;
         default:
             log_debug("DEFAULT");
             send = false;
@@ -213,6 +217,12 @@ static _Bool isLogged(int id) {
 }
 
 void createGameFromClient(ClientInfo *client) {
+    int pom, map;
+
+    char a[10];
+//    sscanf(buffer, "%d %d %s %d %d", &pom, &pom, a,
+//           &map);
+
     srand(time(NULL));
     _Bool done;
     int r = 0;
@@ -229,12 +239,12 @@ void createGameFromClient(ClientInfo *client) {
 
     int gameSlot = getFreeGameSlot();
 
+
     if (gameSlot != -1) {
 
         gameServers[gameSlot].gameId = r;
         gameServers[gameSlot].clients[0] = client;
         gameServers[gameSlot].adminId = client->id;
-        int pom;
         sscanf(buffer, "%d %d %s %d %d", &pom, &pom, gameServers[gameSlot].name,
                &gameServers[gameSlot].mapNumber, &gameServers[gameSlot].maxPlayerCount);
 //        memset(buffer, '\0', sizeof buffer);
@@ -244,6 +254,7 @@ void createGameFromClient(ClientInfo *client) {
         gameServers[gameSlot].playerCount = 1;
         client->admin = true;
         client->inLobby = true;
+
     } else {
 //        memset(buffer, '\0', sizeof buffer);
         sprintf(buffer, "%d %d", CREATE_GAME, SERVICE_UNAVAILABLE);
@@ -342,7 +353,6 @@ void joinGameFromClient(ClientInfo *client) {
                 gameServers[gameIndex].adminId);
         gameServers[gameIndex].playerCount++;
         client->inLobby = true;
-
     }
     sprintf(buffer, "%d %d %s", JOIN_LOBBY, result, data);
 
@@ -383,9 +393,7 @@ void leaveLobbyDisconnect(ClientInfo *client) {
             }
         }
     }
-
 }
-
 
 static int existGame(int gameId) {
     int ret = -1;
@@ -423,6 +431,40 @@ static void playerLeft(int gameIndex, int playerId) {
 
     gameServers[gameIndex].playerCount--;
 }
+
+void sendMapToClient(ClientInfo *clinet) {
+
+    int pomT, pomR;
+    char map[10];
+    char end[3] = "\0";
+
+    sscanf(buffer, "%d %d %s", &pomT, &pomR, map);
+    char fname[20] = "../Mapy/";
+    strcat(fname, map);
+    strcat(fname, ".txt");
+    FILE *fp = fopen(fname, "r");
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t read;
+    if (fp == NULL) {
+        printf("File opern error");
+        return;
+    }
+    while (getline(&line, &len, fp) != EOF) {
+        sprintf(buffer, "%d %d %s", MAP_DOWNLOAD, ZERO, line);
+        strcat(line, end);
+        send(clinet->socket, buffer, BUFFER_SIZE, 0);
+        recv(clinet->socket, buffer, BUFFER_SIZE, 0);
+
+    };
+
+    sprintf(buffer, "%d %d", MAP_DOWNLOAD, DONE);
+    send(clinet->socket, buffer, BUFFER_SIZE, 0);
+    fclose(fp);
+    if (line)
+        free(line);
+}
+
 
 void setSocketToFD() {
     //add child sockets to set
