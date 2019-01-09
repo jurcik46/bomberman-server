@@ -45,25 +45,6 @@ typedef struct clientsSockets {
     pthread_mutex_t lock;
 } ClientsSockets;
 
-ClientsSockets cSockets;
-pthread_t acceptSocketThread;
-
-/**
- * Main Socket
- */
-int server_fd;
-struct sockaddr_in address;
-int opt;
-int addrlen;
-char buffer[BUFFER_SIZE];
-
-/**
- * Communication Select
- */
-fd_set socketDs;
-int max_sd;
-int sd;
-int activity;
 
 
 /**
@@ -81,8 +62,6 @@ typedef struct gameServer {
 } GameServers;
 
 
-GameServers gameServers[MAX_CLIENT];
-GameServers emptyServer;
 
 /**
  *

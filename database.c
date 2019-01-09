@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+sqlite3 *db;
+char *zErrMsg;
 
 void initTables() {
     sqlite3_open(DB_NAME, &db);

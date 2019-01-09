@@ -1,5 +1,28 @@
 #include "communication.h"
 
+ClientsSockets cSockets;
+pthread_t acceptSocketThread;
+
+/**
+ * Main Socket
+ */
+int server_fd;
+struct sockaddr_in address;
+int opt;
+int addrlen;
+char buffer[BUFFER_SIZE];
+
+/**
+ * Communication Select
+ */
+fd_set socketDs;
+int max_sd;
+int sd;
+int activity;
+
+GameServers gameServers[MAX_CLIENT];
+GameServers emptyServer;
+
 
 void initSocket(u_int16_t port) {
     opt = 1;
@@ -348,6 +371,7 @@ void playerLeft(int gameIndex, int playerId) {
     if (playerIndex == -1)
         return;
     if (playerIndex == gameServers[gameIndex].playerCount - 1) {
+        gameServers[gameIndex].playerCount--;
         return;
     }
     for (int j = playerIndex; j < gameServers[gameIndex].playerCount; ++j) {
