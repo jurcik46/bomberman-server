@@ -13,11 +13,13 @@
 #include <arpa/inet.h>
 #include <sys/time.h>
 #include <time.h>
+#include <dirent.h>
 
 #include "logging/log.h"
 #include "constants.h"
 #include "database.h"
 
+#define MAPY "../Mapy/"
 #define BUFFER_SIZE 1024
 #define MAX_CLIENT 20
 #define NAME_LENGTH 50
@@ -85,6 +87,7 @@ void loginFromClient(ClientInfo *client);
 
 void createGameFromClient(ClientInfo *client);
 
+static _Bool mapaExist(int mapNumber);
 
 int getFreeGameSlot();
 

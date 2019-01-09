@@ -221,9 +221,12 @@ void createGameFromClient(ClientInfo *client) {
     int pom, map;
 
     char a[10];
-//    sscanf(buffer, "%d %d %s %d %d", &pom, &pom, a,
-//           &map);
-
+    sscanf(buffer, "%d %d %s %d", &pom, &pom, a,
+           &map);
+    if (!mapaExist(map)) {
+        sprintf(buffer, "%d %d", CREATE_GAME, NOT_FOUND);
+        return;
+    }
     srand(time(NULL));
     _Bool done;
     int r = 0;
@@ -260,7 +263,31 @@ void createGameFromClient(ClientInfo *client) {
 //        memset(buffer, '\0', sizeof buffer);
         sprintf(buffer, "%d %d", CREATE_GAME, SERVICE_UNAVAILABLE);
     }
-//TODO DESTROY LOBBY AFTER USER LEAVE OR DISCONNECT
+
+
+
+}
+
+static _Bool mapaExist(int mapNumber) {
+    struct dirent *de;  // Pointer for directory entry
+    DIR *dr = opendir(MAPY);
+    if (dr == NULL)  // opendir returns NULL if couldn't open directory
+    {
+        printf("Could not open current directory");
+        return 0;
+    }
+    while ((de = readdir(dr)) != NULL) {
+        printf("%s\n", de->d_name);
+        int pom;
+        sscanf(de->d_name, "%d.txt", &pom);
+        log_debug("Number map in folder %d", pom);
+        if (pom == mapNumber) {
+            closedir(dr);
+            return true;
+        }
+    }
+    closedir(dr);
+    return false;
 }
 
 int getFreeGameSlot() {
