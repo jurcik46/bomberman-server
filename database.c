@@ -146,6 +146,7 @@ enum result_code login(char *nick, char *heslo) {
 int getPlayerId(char *nick){
     int id = 0;
     sqlite3_open(DB_NAME, &db);
+
     sqlite3_stmt *stmt;
     char sql[1000] = "SELECT `id` as user_id,`nick` FROM `Users` WHERE `nick` = '";
     strcat(sql, nick);

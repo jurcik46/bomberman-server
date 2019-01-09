@@ -172,6 +172,7 @@ _Bool communication(enum communication_type commuType, ClientInfo *client) {
         case MAP_DOWNLOAD:
             log_debug("SEND MAP TO CLIENT");
             sendMapToClient(client);
+            send = false;
             break;
         default:
             log_debug("DEFAULT");
@@ -450,19 +451,39 @@ void sendMapToClient(ClientInfo *clinet) {
         printf("File opern error");
         return;
     }
-    while (getline(&line, &len, fp) != EOF) {
-        sprintf(buffer, "%d %d %s", MAP_DOWNLOAD, ZERO, line);
-        strcat(line, end);
-        send(clinet->socket, buffer, BUFFER_SIZE, 0);
-        recv(clinet->socket, buffer, BUFFER_SIZE, 0);
 
-    };
+    while (1) {
+        /* First read file in chunks of 256 bytes */
+        int nread = fread(buffer, 1, BUFFER_SIZE, fp);
+        //printf("Bytes read %d \n", nread);
 
-    sprintf(buffer, "%d %d", MAP_DOWNLOAD, DONE);
-    send(clinet->socket, buffer, BUFFER_SIZE, 0);
+        /* If read was success, send data. */
+        if (nread > 0) {
+            //printf("Sending \n");
+            send(clinet->socket, buffer, nread, 0);
+        }
+        if (nread < BUFFER_SIZE) {
+            if (feof(fp)) {
+                log_debug("End of file\n");
+                log_debug("File transfer completed for id: %s\n", clinet->name);
+            }
+            if (ferror(fp))
+                log_debug("Error reading\n");
+            break;
+        }
+    }
+//    while (getline(&line, &len, fp) != EOF) {
+//        sprintf(buffer, "%d %d %s", MAP_DOWNLOAD, ZERO, line);
+//        strcat(line, end);
+//        send(clinet->socket, buffer, BUFFER_SIZE, 0);
+//
+//    };
+//
+//    sprintf(buffer, "%d %d", MAP_DOWNLOAD, DONE);
+//    send(clinet->socket, buffer, BUFFER_SIZE, 0);
     fclose(fp);
-    if (line)
-        free(line);
+//    if (line)
+//        free(line);
 }
 
 
