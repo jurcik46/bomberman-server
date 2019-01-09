@@ -492,6 +492,7 @@ void sendMapToClient(ClientInfo *clinet) {
             if (feof(fp)) {
                 log_debug("End of file\n");
                 log_debug("File transfer completed for id: %s\n", clinet->name);
+                send(clinet->socket, buffer, 0, 0);
             }
             if (ferror(fp))
                 log_debug("Error reading\n");
