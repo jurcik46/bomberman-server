@@ -265,7 +265,6 @@ void createGameFromClient(ClientInfo *client) {
     }
 
 
-
 }
 
 static _Bool mapaExist(int mapNumber) {
