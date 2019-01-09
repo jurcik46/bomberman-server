@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
 sqlite3 *db;
 char *zErrMsg;
 
@@ -143,7 +144,7 @@ enum result_code login(char *nick, char *heslo) {
 }
 
 
-int getPlayerId(char *nick){
+int getPlayerId(char *nick) {
     int id = 0;
     sqlite3_open(DB_NAME, &db);
 
@@ -172,7 +173,6 @@ int getPlayerId(char *nick){
     sqlite3_close(db);
     return id;
 }
-
 
 
 int callback(void *NotUsed, int argc, char **argv, char **azColName) {
