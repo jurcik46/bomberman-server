@@ -487,12 +487,18 @@ void sendMapToClient(ClientInfo *clinet) {
         if (nread > 0) {
             //printf("Sending \n");
             send(clinet->socket, buffer, nread, 0);
+            log_debug("Buffer %s", buffer);
         }
         if (nread < BUFFER_SIZE) {
             if (feof(fp)) {
                 log_debug("End of file\n");
                 log_debug("File transfer completed for id: %s\n", clinet->name);
-                send(clinet->socket, buffer, 0, 0);
+//                char a = ' ';
+//                sprintf(buffer, "%c", a);
+                memset(buffer, '\0', sizeof(buffer));
+                sprintf(buffer, "%d %d", MAP_DOWNLOAD, DONE);
+                send(clinet->socket, buffer, BUFFER_SIZE, 0);
+                log_debug("Buffer %s", buffer);
             }
             if (ferror(fp))
                 log_debug("Error reading\n");
