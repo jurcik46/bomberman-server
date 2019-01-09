@@ -108,8 +108,12 @@ void startCommunication() {
 
                     //Close the socket and mark as 0 in list for reuse
                     pthread_mutex_lock(&cSockets.lock);
+                    if (cSockets.client[i].inLobby) {
+                        leaveLobbyDisconnect(&cSockets.client[i]);
+                    }
                     close(sd);
                     cSockets.client[i].socket = 0;
+                    cSockets.client[i].id = 0;
 //                    sd = 0 ;
                     memset(cSockets.client[i].name, '\0', sizeof cSockets.client[i].name);
                     cSockets.count--;
@@ -180,14 +184,32 @@ void loginFromClient(ClientInfo *client) {
     sscanf(buffer, "%d %d %s %s", &pomT, &pomR, nick, password);
 
     enum result_code a = login(nick, password);
+    if (isLogged(getPlayerId(nick))) {
+        a = SERVICE_UNAVAILABLE;
+    }
     if (a == CREATED || a == OKEJ) {
+
+
         strcpy(client->name, nick);
         client->id = getPlayerId(nick);
         client->admin = false;
+        client->inLobby = false;
+
     }
+
+
     memset(buffer, '\0', sizeof buffer);
 
     sprintf(buffer, "%d %d %d", LOGIN, a, client->id);
+}
+
+static _Bool isLogged(int id) {
+    for (int i = 0; i < MAX_CLIENT; ++i) {
+        if (cSockets.client[i].id == id) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void createGameFromClient(ClientInfo *client) {
@@ -221,6 +243,7 @@ void createGameFromClient(ClientInfo *client) {
                 gameServers[gameSlot].maxPlayerCount, gameServers[gameSlot].mapNumber);
         gameServers[gameSlot].playerCount = 1;
         client->admin = true;
+        client->inLobby = true;
     } else {
 //        memset(buffer, '\0', sizeof buffer);
         sprintf(buffer, "%d %d", CREATE_GAME, SERVICE_UNAVAILABLE);
@@ -318,11 +341,13 @@ void joinGameFromClient(ClientInfo *client) {
                 gameServers[gameIndex].maxPlayerCount,
                 gameServers[gameIndex].adminId);
         gameServers[gameIndex].playerCount++;
+        client->inLobby = true;
 
     }
     sprintf(buffer, "%d %d %s", JOIN_LOBBY, result, data);
 
 }
+
 
 void leaveLobbyFromClient(ClientInfo *client) {
     int pomT, pomR, gameId, userId, admin, gameSlot;
@@ -345,10 +370,24 @@ void leaveLobbyFromClient(ClientInfo *client) {
         gameServers[gameSlot].gameId = 0;
 //        gameServers[gameSlot] = emptyServer;
     }
+    client->inLobby = false;
+}
+
+void leaveLobbyDisconnect(ClientInfo *client) {
+    for (int i = 0; i < MAX_CLIENT; ++i) {
+        for (int j = 0; j < MAX_CLIENT; ++j) {
+            if (gameServers[i].clients[j]->id == client->id) {
+                sprintf(buffer, "%d %d %d %d %d", LEAVE_LOBBY, OKEJ, gameServers[i].gameId, client->id, client->admin);
+                leaveLobbyFromClient(client);
+                return;
+            }
+        }
+    }
 
 }
 
-int existGame(int gameId) {
+
+static int existGame(int gameId) {
     int ret = -1;
     for (int i = 0; i < MAX_CLIENT; i++) {
         if (gameServers[i].gameId == gameId) {
@@ -359,7 +398,7 @@ int existGame(int gameId) {
     return ret;
 }
 
-void playerLeft(int gameIndex, int playerId) {
+static void playerLeft(int gameIndex, int playerId) {
     int playerIndex = -1;
 
     for (int i = 0; i < gameServers[gameIndex].playerCount; ++i) {

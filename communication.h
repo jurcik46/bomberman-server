@@ -35,6 +35,7 @@ typedef struct clientInfo {
     int id;
     char name[NAME_LENGTH];
     _Bool admin;
+    _Bool inLobby;
 } ClientInfo;
 
 typedef struct clientsSockets {
@@ -44,7 +45,6 @@ typedef struct clientsSockets {
 
     pthread_mutex_t lock;
 } ClientsSockets;
-
 
 
 /**
@@ -62,7 +62,6 @@ typedef struct gameServer {
 } GameServers;
 
 
-
 /**
  *
  * @param port
@@ -72,6 +71,8 @@ void initSocket(u_int16_t port);
 
 void setSocketToFD();
 
+static _Bool isLogged(int id);
+
 void *accpetSocketThreadFun(void *arg);
 
 void closeSocket();
@@ -80,23 +81,26 @@ void startCommunication();
 
 _Bool communication(enum communication_type commuType, ClientInfo *client);
 
-void loginFromClient();
+void loginFromClient(ClientInfo *client);
 
 void createGameFromClient(ClientInfo *client);
 
 
 int getFreeGameSlot();
 
-void findServersFromClient();
+void findServersFromClient(ClientInfo *client);
 
 void getPlayerInLobby();
 
 void joinGameFromClient(ClientInfo *client);
 
+
 void leaveLobbyFromClient(ClientInfo *client);
 
-int existGame(int gameId);
+void leaveLobbyDisconnect(ClientInfo *client);
 
-void playerLeft();
+static int existGame(int gameId);
+
+static void playerLeft(int gameIndex, int playerId);
 
 #endif //BOMBERMAN_SERVER_COMMUNICATION_H
