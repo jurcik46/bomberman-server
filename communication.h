@@ -18,7 +18,6 @@
 #include "logging/log.h"
 #include "constants.h"
 #include "database.h"
-#include "Game/game.h"
 #include "Game/gameCommunication.h"
 
 #define MAPY "../Mapy/"

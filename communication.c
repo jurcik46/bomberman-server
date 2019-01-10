@@ -9,6 +9,7 @@ pthread_t acceptSocketThread;
 int server_fd;
 struct sockaddr_in address;
 char buffer[BUFFER_SIZE];
+int opt;
 int addrlen;
 
 /**
@@ -25,7 +26,7 @@ GameServers emptyServer;
 
 
 void initSocket(u_int16_t port) {
-    int opt = 1;
+    opt = 1;
     addrlen = sizeof(address);
     memset(buffer, '\0', sizeof buffer);
 

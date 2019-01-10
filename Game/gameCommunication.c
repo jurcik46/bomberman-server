@@ -9,9 +9,9 @@ char buffer[BUFF_SIZE];
 int gameServerSocket;
 struct sockaddr_in servaddr, clientaddr;
 
-fd_set socketDs;
-int sd;
-int activity;
+fd_set socketDsGame;
+int sdGame;
+int activityGame;
 
 PlayerSockets playerSockets;
 
@@ -38,7 +38,7 @@ _Bool initGameSocket(u_int16_t port) {
         log_error("Game bind failed");
         return false;
     }
-    sd = gameServerSocket;
+    sdGame = gameServerSocket;
 //    if (listen(gameServerSocket, MAX_GAME_PLAYER) < 0) {
 //        log_error("Game listen failed");
 //        return false;
@@ -164,17 +164,17 @@ _Bool saveInGame(char *data) {
 
 
 _Bool socketReady() {
-    FD_ZERO(&socketDs);
-    FD_SET(sd, &socketDs);
+    FD_ZERO(&socketDsGame);
+    FD_SET(sdGame, &socketDsGame);
     struct timeval tv;
     tv.tv_usec = 1;
 
-    activity = select(sd + 1, &socketDs, NULL, NULL, &tv);
+    activityGame = select(sdGame + 1, &socketDsGame, NULL, NULL, &tv);
 
-    if ((activity < 0) && (errno != EINTR)) {
+    if ((activityGame < 0) && (errno != EINTR)) {
         log_error("Select Socket Activity error");
     }
-    if (sd != 0 && FD_ISSET(sd, &socketDs)) {
+    if (sdGame != 0 && FD_ISSET(sdGame, &socketDsGame)) {
         int len = sizeof(clientaddr);
         if (recvfrom(gameServerSocket, buffer, BUFFER_SIZE, 0, (struct sockaddr *) &clientaddr, &len) == 0) {
 
