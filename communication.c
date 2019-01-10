@@ -8,25 +8,20 @@ pthread_t acceptSocketThread;
  */
 int server_fd;
 struct sockaddr_in address;
-int opt;
-int addrlen;
 char buffer[BUFFER_SIZE];
 
 /**
  * Communication Select
  */
 fd_set socketDs;
-int max_sd;
-int sd;
-int activity;
 
 GameServers gameServers[MAX_CLIENT];
 GameServers emptyServer;
 
 
 void initSocket(u_int16_t port) {
-    opt = 1;
-    addrlen = sizeof(address);
+    int opt = 1;
+    int addrlen = sizeof(address);
     memset(buffer, '\0', sizeof buffer);
 
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
@@ -56,7 +51,6 @@ void initSocket(u_int16_t port) {
      * Init Select for File description changes
      */
     FD_ZERO(&socketDs);
-    max_sd = 0;
 
     /**
      * Init new thread for accepting new clients connnections
@@ -65,21 +59,26 @@ void initSocket(u_int16_t port) {
     cSockets.count = 0;
     pthread_mutex_init(&cSockets.lock, NULL);
 
-    pthread_create(&acceptSocketThread, NULL, &accpetSocketThreadFun, &cSockets);
+    pthread_create(&acceptSocketThread, NULL, &acceptSocketThreadFun, &cSockets);
 
 }
 
 void startCommunication() {
     int a = 1;
     struct timeval tv;
+    int activity = 0;
+    int sd = 0;
+    int max_sd = 0;
+    int addrlen = sizeof(address);
+
     tv.tv_usec = 1;
     while (a) {
         FD_ZERO(&socketDs);
 
-        setSocketToFD();
+        setSocketToFD(&sd, &max_sd);
         if (cSockets.count == 0) {
             log_info("No clients connected waiting");
-            sleep(5);
+            sleep(2);
             continue;
         }
 
@@ -174,6 +173,10 @@ _Bool communication(enum communication_type commuType, ClientInfo *client) {
             sendMapToClient(client);
             send = false;
             break;
+        case START:
+            log_debug("START GAME");
+            startGameFromClient(client);
+            break;
         default:
             log_debug("DEFAULT");
             send = false;
@@ -215,6 +218,49 @@ static _Bool isLogged(int id) {
         }
     }
     return false;
+}
+
+void startGameFromClient(ClientInfo *client) {
+
+    int pomT, pomR, gameId;
+
+    sscanf(buffer, "%d %d %d", &pomT, &pomR, &gameId);
+
+    enum result_code result = OKEJ;
+    char data[BUFFER_SIZE];
+    memset(buffer, '\0', sizeof buffer);
+    int gameIndex = existGame(gameId);
+    if (gameIndex == -1) {
+        result = NOT_FOUND;
+    }
+    if (result == OKEJ) {
+
+        u_int16_t tryPort = START_GAME_PORT;
+        char iP[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &address.sin_addr, iP, INET_ADDRSTRLEN);
+
+        while (!initGameSocket(tryPort)) {
+            tryPort++;
+            if (tryPort > 60000) {
+                return;
+            }
+        }
+        pthread_mutex_init(&gameServers[gameIndex].gamelock, NULL);
+        pthread_create(&gameServers[gameIndex].gameThread, NULL, &initGame, &gameServers[gameIndex]);
+
+        sprintf(data, "%s %d", iP, tryPort); // preaper data
+        sprintf(buffer, "%d %d %s", START, OKEJ, data); // preaper buffer
+
+        for (int i = 0; i < gameServers[gameIndex].playerCount; ++i) {
+            if (gameServers[gameIndex].clients[i]->id != client->id) {
+                log_debug("SEND GAME INFO FOR PLAYERS IN LOBBY: ID: %d --- %s ", i, buffer);
+                send(gameServers[gameIndex].clients[i]->socket, buffer, BUFFER_SIZE, 0);
+            }
+        }
+    }
+
+    ///Zakladate lobby dostanes odpvoed az v hlavnom cykle
+    sprintf(buffer, "%d %d %s", START, result, data);
 }
 
 void createGameFromClient(ClientInfo *client) {
@@ -372,7 +418,8 @@ void joinGameFromClient(ClientInfo *client) {
         }
 
         gameServers[gameIndex].clients[gameServers[gameIndex].playerCount] = client;
-        sprintf(data, "%d %s %d %d %d %d", gameServers[gameIndex].gameId,
+        sprintf(data, "%d %s %d %d %d %d",
+                gameServers[gameIndex].gameId,
                 gameServers[gameIndex].name,
                 gameServers[gameIndex].mapNumber,
                 gameServers[gameIndex].playerCount,
@@ -463,7 +510,6 @@ void sendMapToClient(ClientInfo *clinet) {
 
     int pomT, pomR;
     char map[10];
-    char end[3] = "\0";
 
     sscanf(buffer, "%d %d %s", &pomT, &pomR, map);
     char fname[20] = "../Mapy/";
@@ -481,7 +527,6 @@ void sendMapToClient(ClientInfo *clinet) {
     while (1) {
         /* First read file in chunks of 256 bytes */
         int nread = fread(buffer, 1, BUFFER_SIZE, fp);
-        //printf("Bytes read %d \n", nread);
 
         /* If read was success, send data. */
         if (nread > 0) {
@@ -493,8 +538,6 @@ void sendMapToClient(ClientInfo *clinet) {
             if (feof(fp)) {
                 log_debug("End of file\n");
                 log_debug("File transfer completed for id: %s\n", clinet->name);
-//                char a = ' ';
-//                sprintf(buffer, "%c", a);
                 memset(buffer, '\0', sizeof(buffer));
                 sprintf(buffer, "%d %d", MAP_DOWNLOAD, DONE);
                 send(clinet->socket, buffer, BUFFER_SIZE, 0);
@@ -505,42 +548,32 @@ void sendMapToClient(ClientInfo *clinet) {
             break;
         }
     }
-//    while (getline(&line, &len, fp) != EOF) {
-//        sprintf(buffer, "%d %d %s", MAP_DOWNLOAD, ZERO, line);
-//        strcat(line, end);
-//        send(clinet->socket, buffer, BUFFER_SIZE, 0);
-//
-//    };
-//
-//    sprintf(buffer, "%d %d", MAP_DOWNLOAD, DONE);
-//    send(clinet->socket, buffer, BUFFER_SIZE, 0);
     fclose(fp);
-//    if (line)
-//        free(line);
 }
 
 
-void setSocketToFD() {
+void setSocketToFD(int *sd, int *max_sd) {
     //add child sockets to set
     for (int i = 0; i < MAX_CLIENT; i++) {
         //socket descriptor
-        sd = cSockets.client[i].socket;
+        *sd = cSockets.client[i].socket;
 
         //if valid socket descriptor then add to read list
         if (sd > 0)
-            FD_SET(sd, &socketDs);
+            FD_SET(*sd, &socketDs);
 
         //highest file descriptor number, need it for the select function
-        if (sd > max_sd) {
-            max_sd = sd;
+        if (*sd > *max_sd) {
+            *max_sd = *sd;
             log_debug("Max_SD : %d", max_sd);
         }
 
     }
 }
 
-void *accpetSocketThreadFun(void *arg) {
+void *acceptSocketThreadFun(void *arg) {
     ClientsSockets *data = (ClientsSockets *) arg;
+    int addrlen = sizeof(address);
 
     while (!data->end) {
 
