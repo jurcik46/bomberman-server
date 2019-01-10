@@ -77,14 +77,14 @@ void startCommunication() {
 //    int sd = 0;
 //    int max_sd = 0;
 
-    tv.tv_usec = 1;
+    tv.tv_usec = 10;
     while (a) {
         FD_ZERO(&socketDs);
 
         setSocketToFD();
         if (cSockets.count == 0) {
             log_info("No clients connected waiting");
-            sleep(2);
+            sleep(5);
             continue;
         }
 
@@ -182,6 +182,7 @@ _Bool communication(enum communication_type commuType, ClientInfo *client) {
         case START:
             log_debug("START GAME");
             startGameFromClient(client);
+            send = false;
             break;
         default:
             log_debug("DEFAULT");
@@ -231,14 +232,20 @@ void startGameFromClient(ClientInfo *client) {
     int pomT, pomR, gameId;
 
     sscanf(buffer, "%d %d %d", &pomT, &pomR, &gameId);
+    log_debug("%s", buffer);
 
     enum result_code result = OKEJ;
+//    log_debug("%d", result);
     char data[BUFFER_SIZE];
     memset(buffer, '\0', sizeof buffer);
     int gameIndex = existGame(gameId);
     if (gameIndex == -1) {
         result = NOT_FOUND;
     }
+
+
+    log_debug("%d  gameIndex %d ", result, gameIndex);
+
     if (result == OKEJ) {
 
         u_int16_t tryPort = START_GAME_PORT;
@@ -258,16 +265,17 @@ void startGameFromClient(ClientInfo *client) {
         sprintf(buffer, "%d %d %s", START, OKEJ, data); // preaper buffer
 
         for (int i = 0; i < gameServers[gameIndex].playerCount; ++i) {
-            if (gameServers[gameIndex].clients[i]->id != client->id) {
-                log_debug("SEND GAME INFO FOR PLAYERS IN LOBBY: index: %d  ID : %d--- %s ", i,
-                          gameServers[gameIndex].clients[i]->id, buffer);
-                send(gameServers[gameIndex].clients[i]->socket, buffer, BUFFER_SIZE, 0);
-            }
+//            if (gameServers[gameIndex].clients[i]->id != client->id) {
+            log_debug("SEND GAME INFO FOR PLAYERS IN LOBBY: index: %d  ID : %d--- %s ", i,
+                      gameServers[gameIndex].clients[i]->id, buffer);
+            send(gameServers[gameIndex].clients[i]->socket, buffer, BUFFER_SIZE, 0);
+//            }
         }
     }
+//    log_debug("%d", result);
 
     ///Zakladate lobby dostanes odpvoed az v hlavnom cykle
-    sprintf(buffer, "%d %d %s", START, result, data);
+//    sprintf(buffer, "%d %d %s", START, result, data);
 }
 
 void createGameFromClient(ClientInfo *client) {
