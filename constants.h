@@ -24,7 +24,9 @@ enum communication_type {
     FIND_SERVERS,
     JOIN_LOBBY,
     LEAVE_LOBBY,
-    MAP_DOWNLOAD
+    MAP_DOWNLOAD,
+    START
+
 };
 
 

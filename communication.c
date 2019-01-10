@@ -8,9 +8,9 @@ pthread_t acceptSocketThread;
  */
 int server_fd;
 struct sockaddr_in address;
+char buffer[BUFFER_SIZE];
 int opt;
 int addrlen;
-char buffer[BUFFER_SIZE];
 
 /**
  * Communication Select
@@ -19,6 +19,7 @@ fd_set socketDs;
 int max_sd;
 int sd;
 int activity;
+
 
 GameServers gameServers[MAX_CLIENT];
 GameServers emptyServer;
@@ -65,14 +66,18 @@ void initSocket(u_int16_t port) {
     cSockets.count = 0;
     pthread_mutex_init(&cSockets.lock, NULL);
 
-    pthread_create(&acceptSocketThread, NULL, &accpetSocketThreadFun, &cSockets);
+    pthread_create(&acceptSocketThread, NULL, &acceptSocketThreadFun, &cSockets);
 
 }
 
 void startCommunication() {
     int a = 1;
     struct timeval tv;
-    tv.tv_usec = 1;
+//    int activity = 0;
+//    int sd = 0;
+//    int max_sd = 0;
+
+    tv.tv_usec = 10;
     while (a) {
         FD_ZERO(&socketDs);
 
@@ -174,6 +179,11 @@ _Bool communication(enum communication_type commuType, ClientInfo *client) {
             sendMapToClient(client);
             send = false;
             break;
+        case START:
+            log_debug("START GAME");
+            startGameFromClient(client);
+            send = false;
+            break;
         default:
             log_debug("DEFAULT");
             send = false;
@@ -215,6 +225,57 @@ static _Bool isLogged(int id) {
         }
     }
     return false;
+}
+
+void startGameFromClient(ClientInfo *client) {
+
+    int pomT, pomR, gameId;
+
+    sscanf(buffer, "%d %d %d", &pomT, &pomR, &gameId);
+    log_debug("%s", buffer);
+
+    enum result_code result = OKEJ;
+//    log_debug("%d", result);
+    char data[BUFFER_SIZE];
+    memset(buffer, '\0', sizeof buffer);
+    int gameIndex = existGame(gameId);
+    if (gameIndex == -1) {
+        result = NOT_FOUND;
+    }
+
+
+    log_debug("%d  gameIndex %d ", result, gameIndex);
+
+    if (result == OKEJ) {
+
+        u_int16_t tryPort = START_GAME_PORT;
+        char iP[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &address.sin_addr, iP, INET_ADDRSTRLEN);
+
+        while (!initGameSocket(tryPort)) {
+            tryPort++;
+            if (tryPort > 60000) {
+                return;
+            }
+        }
+        pthread_mutex_init(&gameServers[gameIndex].gamelock, NULL);
+        pthread_create(&gameServers[gameIndex].gameThread, NULL, &initGame, &gameServers[gameIndex]);
+
+        sprintf(data, "%s %d", iP, tryPort); // preaper data
+        sprintf(buffer, "%d %d %s", START, OKEJ, data); // preaper buffer
+
+        for (int i = 0; i < gameServers[gameIndex].playerCount; ++i) {
+//            if (gameServers[gameIndex].clients[i]->id != client->id) {
+            log_debug("SEND GAME INFO FOR PLAYERS IN LOBBY: index: %d  ID : %d--- %s ", i,
+                      gameServers[gameIndex].clients[i]->id, buffer);
+            send(gameServers[gameIndex].clients[i]->socket, buffer, BUFFER_SIZE, 0);
+//            }
+        }
+    }
+//    log_debug("%d", result);
+
+    ///Zakladate lobby dostanes odpvoed az v hlavnom cykle
+//    sprintf(buffer, "%d %d %s", START, result, data);
 }
 
 void createGameFromClient(ClientInfo *client) {
@@ -372,7 +433,8 @@ void joinGameFromClient(ClientInfo *client) {
         }
 
         gameServers[gameIndex].clients[gameServers[gameIndex].playerCount] = client;
-        sprintf(data, "%d %s %d %d %d %d", gameServers[gameIndex].gameId,
+        sprintf(data, "%d %s %d %d %d %d",
+                gameServers[gameIndex].gameId,
                 gameServers[gameIndex].name,
                 gameServers[gameIndex].mapNumber,
                 gameServers[gameIndex].playerCount,
@@ -463,7 +525,6 @@ void sendMapToClient(ClientInfo *clinet) {
 
     int pomT, pomR;
     char map[10];
-    char end[3] = "\0";
 
     sscanf(buffer, "%d %d %s", &pomT, &pomR, map);
     char fname[20] = "../Mapy/";
@@ -481,7 +542,6 @@ void sendMapToClient(ClientInfo *clinet) {
     while (1) {
         /* First read file in chunks of 256 bytes */
         int nread = fread(buffer, 1, BUFFER_SIZE, fp);
-        //printf("Bytes read %d \n", nread);
 
         /* If read was success, send data. */
         if (nread > 0) {
@@ -493,8 +553,6 @@ void sendMapToClient(ClientInfo *clinet) {
             if (feof(fp)) {
                 log_debug("End of file\n");
                 log_debug("File transfer completed for id: %s\n", clinet->name);
-//                char a = ' ';
-//                sprintf(buffer, "%c", a);
                 memset(buffer, '\0', sizeof(buffer));
                 sprintf(buffer, "%d %d", MAP_DOWNLOAD, DONE);
                 send(clinet->socket, buffer, BUFFER_SIZE, 0);
@@ -505,18 +563,7 @@ void sendMapToClient(ClientInfo *clinet) {
             break;
         }
     }
-//    while (getline(&line, &len, fp) != EOF) {
-//        sprintf(buffer, "%d %d %s", MAP_DOWNLOAD, ZERO, line);
-//        strcat(line, end);
-//        send(clinet->socket, buffer, BUFFER_SIZE, 0);
-//
-//    };
-//
-//    sprintf(buffer, "%d %d", MAP_DOWNLOAD, DONE);
-//    send(clinet->socket, buffer, BUFFER_SIZE, 0);
     fclose(fp);
-//    if (line)
-//        free(line);
 }
 
 
@@ -539,8 +586,9 @@ void setSocketToFD() {
     }
 }
 
-void *accpetSocketThreadFun(void *arg) {
+void *acceptSocketThreadFun(void *arg) {
     ClientsSockets *data = (ClientsSockets *) arg;
+    int addrlen = sizeof(address);
 
     while (!data->end) {
 
@@ -561,7 +609,7 @@ void *accpetSocketThreadFun(void *arg) {
             if (data->client[i].socket == 0) {
                 data->client[i].socket = new_socket;
                 data->count++;
-//                setSocketToFD();
+                setSocketToFD();
                 log_info("New Socket Added Count %d Id socket %d ", data->count, new_socket);
                 break;
             }

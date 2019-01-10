@@ -18,15 +18,17 @@
 #include "logging/log.h"
 #include "constants.h"
 #include "database.h"
+#include "Game/gameCommunication.h"
 
 #define MAPY "../Mapy/"
 #define BUFFER_SIZE 1024
-#define MAX_CLIENT 20
+#define MAX_CLIENT 4
 #define NAME_LENGTH 50
 #define PASSWORD_LENGTH 50
 #define GAME_NAME_LENGTH 20
 
 #define MAX_GAME_PLAYERS 4
+#define START_GAME_PORT 10000
 
 /**
  * Client socket
@@ -44,7 +46,6 @@ typedef struct clientsSockets {
     ClientInfo client[MAX_CLIENT];
     int count;
     _Bool end;
-
     pthread_mutex_t lock;
 } ClientsSockets;
 
@@ -61,6 +62,9 @@ typedef struct gameServer {
     int maxPlayerCount;
     int playerCount;
     ClientInfo *clients[MAX_GAME_PLAYERS];
+    pthread_t gameThread;
+    pthread_mutex_t gamelock;
+
 } GameServers;
 
 
@@ -75,7 +79,7 @@ void setSocketToFD();
 
 static _Bool isLogged(int id);
 
-void *accpetSocketThreadFun(void *arg);
+void *acceptSocketThreadFun(void *arg);
 
 void closeSocket();
 
@@ -84,6 +88,8 @@ void startCommunication();
 _Bool communication(enum communication_type commuType, ClientInfo *client);
 
 void loginFromClient(ClientInfo *client);
+
+void startGameFromClient(ClientInfo *client);
 
 void createGameFromClient(ClientInfo *client);
 
@@ -96,7 +102,6 @@ void findServersFromClient(ClientInfo *client);
 void getPlayerInLobby();
 
 void joinGameFromClient(ClientInfo *client);
-
 
 void leaveLobbyFromClient(ClientInfo *client);
 
