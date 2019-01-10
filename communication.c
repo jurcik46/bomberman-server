@@ -9,11 +9,16 @@ pthread_t acceptSocketThread;
 int server_fd;
 struct sockaddr_in address;
 char buffer[BUFFER_SIZE];
+int addrlen;
 
 /**
  * Communication Select
  */
 fd_set socketDs;
+int max_sd;
+int sd;
+int activity;
+
 
 GameServers gameServers[MAX_CLIENT];
 GameServers emptyServer;
@@ -21,7 +26,7 @@ GameServers emptyServer;
 
 void initSocket(u_int16_t port) {
     int opt = 1;
-    int addrlen = sizeof(address);
+    addrlen = sizeof(address);
     memset(buffer, '\0', sizeof buffer);
 
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
@@ -51,6 +56,7 @@ void initSocket(u_int16_t port) {
      * Init Select for File description changes
      */
     FD_ZERO(&socketDs);
+    max_sd = 0;
 
     /**
      * Init new thread for accepting new clients connnections
@@ -66,16 +72,15 @@ void initSocket(u_int16_t port) {
 void startCommunication() {
     int a = 1;
     struct timeval tv;
-    int activity = 0;
-    int sd = 0;
-    int max_sd = 0;
-    int addrlen = sizeof(address);
+//    int activity = 0;
+//    int sd = 0;
+//    int max_sd = 0;
 
     tv.tv_usec = 1;
     while (a) {
         FD_ZERO(&socketDs);
 
-        setSocketToFD(&sd, &max_sd);
+        setSocketToFD();
         if (cSockets.count == 0) {
             log_info("No clients connected waiting");
             sleep(2);
@@ -253,7 +258,8 @@ void startGameFromClient(ClientInfo *client) {
 
         for (int i = 0; i < gameServers[gameIndex].playerCount; ++i) {
             if (gameServers[gameIndex].clients[i]->id != client->id) {
-                log_debug("SEND GAME INFO FOR PLAYERS IN LOBBY: ID: %d --- %s ", i, buffer);
+                log_debug("SEND GAME INFO FOR PLAYERS IN LOBBY: index: %d  ID : %d--- %s ", i,
+                          gameServers[gameIndex].clients[i]->id, buffer);
                 send(gameServers[gameIndex].clients[i]->socket, buffer, BUFFER_SIZE, 0);
             }
         }
@@ -552,19 +558,19 @@ void sendMapToClient(ClientInfo *clinet) {
 }
 
 
-void setSocketToFD(int *sd, int *max_sd) {
+void setSocketToFD() {
     //add child sockets to set
     for (int i = 0; i < MAX_CLIENT; i++) {
         //socket descriptor
-        *sd = cSockets.client[i].socket;
+        sd = cSockets.client[i].socket;
 
         //if valid socket descriptor then add to read list
         if (sd > 0)
-            FD_SET(*sd, &socketDs);
+            FD_SET(sd, &socketDs);
 
         //highest file descriptor number, need it for the select function
-        if (*sd > *max_sd) {
-            *max_sd = *sd;
+        if (sd > max_sd) {
+            max_sd = sd;
             log_debug("Max_SD : %d", max_sd);
         }
 
@@ -594,7 +600,7 @@ void *acceptSocketThreadFun(void *arg) {
             if (data->client[i].socket == 0) {
                 data->client[i].socket = new_socket;
                 data->count++;
-//                setSocketToFD();
+                setSocketToFD();
                 log_info("New Socket Added Count %d Id socket %d ", data->count, new_socket);
                 break;
             }

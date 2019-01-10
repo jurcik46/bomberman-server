@@ -23,7 +23,7 @@
 
 #define MAPY "../Mapy/"
 #define BUFFER_SIZE 1024
-#define MAX_CLIENT 20
+#define MAX_CLIENT 4
 #define NAME_LENGTH 50
 #define PASSWORD_LENGTH 50
 #define GAME_NAME_LENGTH 20
@@ -76,7 +76,7 @@ typedef struct gameServer {
 
 void initSocket(u_int16_t port);
 
-void setSocketToFD(int *sd, int *max_sd);
+void setSocketToFD();
 
 static _Bool isLogged(int id);
 
