@@ -286,6 +286,7 @@ void createGameFromClient(ClientInfo *client) {
            &map);
     if (!mapaExist(map)) {
         sprintf(buffer, "%d %d", CREATE_GAME, NOT_FOUND);
+        log_debug("map not found");
         return;
     }
     srand(time(NULL));
@@ -302,10 +303,12 @@ void createGameFromClient(ClientInfo *client) {
         }
     } while (!done);
 
+
     int gameSlot = getFreeGameSlot();
 
 
     if (gameSlot != -1) {
+        log_debug(" game slot found");
 
         gameServers[gameSlot].gameId = r;
         gameServers[gameSlot].clients[0] = client;
@@ -321,7 +324,8 @@ void createGameFromClient(ClientInfo *client) {
         client->inLobby = true;
 
     } else {
-//        memset(buffer, '\0', sizeof buffer);
+        log_debug(" game slot not found");
+        //        memset(buffer, '\0', sizeof buffer);
         sprintf(buffer, "%d %d", CREATE_GAME, SERVICE_UNAVAILABLE);
     }
 
