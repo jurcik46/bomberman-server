@@ -232,7 +232,7 @@ void startGameFromClient(ClientInfo *client) {
     int pomT, pomR, gameId;
 
     sscanf(buffer, "%d %d %d", &pomT, &pomR, &gameId);
-    log_debug("%s", buffer);
+    log_debug("Start Game buffer : %s", buffer);
 
     enum result_code result = OKEJ;
 //    log_debug("%d", result);
@@ -244,7 +244,7 @@ void startGameFromClient(ClientInfo *client) {
     }
 
 
-    log_debug("%d  gameIndex %d ", result, gameIndex);
+    log_debug("Starting game ok %d  gameIndex %d ", result, gameIndex);
 
     if (result == OKEJ) {
 
@@ -540,14 +540,15 @@ void sendMapToClient(ClientInfo *clinet) {
     }
 
     while (1) {
-        /* First read file in chunks of 256 bytes */
         int nread = fread(buffer, 1, BUFFER_SIZE, fp);
 
         /* If read was success, send data. */
         if (nread > 0) {
             //printf("Sending \n");
             send(clinet->socket, buffer, nread, 0);
-            log_debug("Buffer %s", buffer);
+            log_debug("Sending map data to client Buffer %s", buffer);
+            recv(clinet->socket, buffer, BUFFER_SIZE, 0);
+            log_debug("Accept sending map from client %s", buffer);
         }
         if (nread < BUFFER_SIZE) {
             if (feof(fp)) {
@@ -556,7 +557,9 @@ void sendMapToClient(ClientInfo *clinet) {
                 memset(buffer, '\0', sizeof(buffer));
                 sprintf(buffer, "%d %d", MAP_DOWNLOAD, DONE);
                 send(clinet->socket, buffer, BUFFER_SIZE, 0);
-                log_debug("Buffer %s", buffer);
+                log_debug("Sending to client Buffer %s", buffer);
+                recv(clinet->socket, buffer, BUFFER_SIZE, 0);
+                log_debug("Accept finishing map from Client%s", buffer);
             }
             if (ferror(fp))
                 log_debug("Error reading\n");
