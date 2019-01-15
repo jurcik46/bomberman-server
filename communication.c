@@ -470,8 +470,9 @@ void leaveLobbyFromClient(ClientInfo *client) {
     if (client->admin) {
         client->admin = false;
         /// reset gameServer
+        gameServers[gameSlot] = emptyServer;
         gameServers[gameSlot].gameId = 0;
-//        gameServers[gameSlot] = emptyServer;
+
     }
     client->inLobby = false;
 }
@@ -550,7 +551,7 @@ void sendMapToClient(ClientInfo *clinet) {
         if (nread > 0) {
             //printf("Sending \n");
             send(clinet->socket, buffer, nread, 0);
-            log_debug("Sending map data to client Buffer %s", buffer);
+//            log_debug("Sending map data to client Buffer %s", buffer);
             recv(clinet->socket, buffer, BUFFER_SIZE, 0);
             log_debug("Accept sending map from client %s", buffer);
         }

@@ -67,7 +67,7 @@ void *initGame(void *arg) {
             int pomType;
             sscanf(buffer, "%d", &pomType);
 
-            log_debug("Hrac poslal data : %s", buffer);
+            log_debug("UDP: Hrac poslal data : %s", buffer);
 
             if (gameCommunication(pomType, buffer) == SUCCESS) {
                 count++;
