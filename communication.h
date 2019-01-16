@@ -22,7 +22,7 @@
 
 #define MAPY "../Mapy/"
 #define BUFFER_SIZE 1024
-#define MAX_CLIENT 4
+#define MAX_CLIENT 8
 #define NAME_LENGTH 50
 #define PASSWORD_LENGTH 50
 #define GAME_NAME_LENGTH 20
@@ -60,6 +60,7 @@ typedef struct gameServer {
     char name[GAME_NAME_LENGTH];
     int mapNumber;
     int maxPlayerCount;
+    _Bool inGame;
     int playerCount;
     ClientInfo *clients[MAX_GAME_PLAYERS];
     pthread_t gameThread;

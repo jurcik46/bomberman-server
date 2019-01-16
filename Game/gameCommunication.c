@@ -39,22 +39,6 @@ _Bool initGameSocket(u_int16_t port) {
         return false;
     }
     sdGame = gameServerSocket;
-//    if (listen(gameServerSocket, MAX_GAME_PLAYER) < 0) {
-//        log_error("Game listen failed");
-//        return false;
-//    }
-//    /**
-//     * Init Select for File description changes
-//     */
-//    FD_ZERO(&socketDs);
-//
-//    /**
-//     * Init new thread for accepting new clients connnections
-//     */
-//    cSockets.end = false;
-//    cSockets.count = 0;
-//
-//    pthread_create(&acceptSocketThread, NULL, &accpetSocketThreadFun, &cSockets);
     return true;
 }
 
@@ -62,30 +46,45 @@ void *initGame(void *arg) {
     GameServers game = *((GameServers *) arg);
     int count = 0;
     playerSockets.end = false;
-    while (game.playerCount >= count) {
+    while (game.playerCount > count) {
         if (socketReady()) {
             int pomType;
             sscanf(buffer, "%d", &pomType);
-
-            log_debug("UDP: Hrac poslal data : %s", buffer);
-
+            log_debug("UDP: Player count %d / %d Hrac poslal data : %s", count, game.playerCount, buffer);
             if (gameCommunication(pomType, buffer) == SUCCESS) {
                 count++;
+                log_debug("UDP: Player joined to game count increment %d / %d", count, game.playerCount);
+            }
+
+        }
+    }
+    log_debug(" HRACI sa pripojili");
+
+    while (!playerSockets.end) {
+        if (socketReady()) {
+            int pomType;
+            sscanf(buffer, "%d", &pomType);
+            log_debug("UDP: Player count %d / %d Hrac poslal data : %s", count, game.playerCount, buffer);
+            if (pomType == END) {
+                gameCommunication(pomType, buffer);
+                log_debug("UDP:  Game END ");
+            }
+            for (int i = 0; i < playerSockets.count; ++i) {
+                if (clientaddr.sin_addr.s_addr != playerSockets.client[i].address.sin_addr.s_addr) {
+                    if (sendto(gameServerSocket, buffer, BUFF_SIZE, 0,
+                               (struct sockaddr *) &playerSockets.client[i].address,
+                               sizeof(playerSockets.client[i].address)) ==
+                        -1) {
+                        log_debug("Error %s %d  %d  %s", strerror(errno), errno, playerSockets.client[i].id,
+                                  playerSockets.client[i].name);
+                    }
+                    log_debug("UDP: SENDING to player ID %d name: %s  Buffer: %s",
+                              playerSockets.client[i].id,
+                              playerSockets.client[i].name, buffer);
+                }
             }
         }
     }
-
-
-    log_debug(" HRACI sa pripojili");
-//    while (!end) {
-//        if (socketReady()) {
-//
-//            if (gameCommunication(pomType, buffer) != NON) {
-//                count++;
-//            }
-//        }
-//
-//    }
     pthread_exit(NULL);
 
 }
@@ -103,7 +102,21 @@ enum gameEnum gameCommunication(enum gameEnum commTyp, char *data) {
         case END:
             log_debug("END");
             playerSockets.end = true;
-//            return createGameToServer(data);
+
+//            for (int i = 0; i < playerSockets.count; ++i) {
+//
+//                sprintf(buffer, "%d", END);
+//
+//                if (clientaddr.sin_addr.s_addr != playerSockets.client[i].address.sin_addr.s_addr) {
+//                    if (sendto(gameServerSocket, buffer, BUFF_SIZE, 0,
+//                               (struct sockaddr *) &playerSockets.client[i].address,
+//                               sizeof(playerSockets.client[i].address)) ==
+//                        -1) {
+//                        log_debug("Error %s %d ", strerror(errno), errno);
+//                    }
+//                }
+//            }
+            break;
         default:
             log_debug("DEFAULT");
             return NON;
@@ -124,44 +137,6 @@ _Bool saveInGame(char *data) {
     playerSockets.client[playerSockets.count].address = clientaddr;
 //    clientaddr
 }
-
-//void *acceptGameSocketPLayer(void *arg) {
-//
-//    playerCount = *((int *) arg);
-//    int addrlen = sizeof(address);
-//    int count = 0;
-//    while (count >= playerCount) {
-//
-//        int new_socket;
-//        if ((new_socket = accept(gameServerSocket, (struct sockaddr *) &address,
-//                                 (socklen_t *) &addrlen)) < 0) {
-//            log_error("Accept Error");
-//            continue;
-//        }
-//
-//
-//        for (int i = 0; i < playerCount; i++) {
-//
-//            if (playerSockets->client[i].socket == 0) {
-//                playerSockets->client[i].socket = new_socket;
-//                count++;
-//                setSocketToFD();
-//                log_info("New Socket Added Count %d Id socket %d ", count, new_socket);
-//                recvfrom(playerSockets->client[i].socket, buffer, BUFFER_SIZE,
-//                         0, (struct sockaddr *) &cliaddr, &len);
-//                break;
-//            }
-//        }
-//
-//
-//    };
-//
-//    log_info("Exit GAme accept socketThread");
-//    pthread_exit(NULL);
-//}
-
-
-
 
 _Bool socketReady() {
     FD_ZERO(&socketDsGame);

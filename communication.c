@@ -22,6 +22,7 @@ int activity;
 
 
 GameServers gameServers[MAX_CLIENT];
+
 GameServers emptyServer;
 
 
@@ -308,7 +309,7 @@ void createGameFromClient(ClientInfo *client) {
 
 
     if (gameSlot != -1) {
-        log_debug(" game slot found");
+        log_debug(" game slot found %d ", gameSlot);
 
         gameServers[gameSlot].gameId = r;
         gameServers[gameSlot].clients[0] = client;
@@ -383,10 +384,13 @@ void findServersFromClient(ClientInfo *client) {
                         gameServers[i].mapNumber,
                         gameServers[i].maxPlayerCount,
                         gameServers[i].adminId);
+                log_debug("Client id  index %d name %s  Id  %d", client->id, i, gameServers[i].name,
+                          gameServers[i].gameId);
                 return;
             }
+            log_debug("Poradie hry ktore si klient vypytal %d  som na akutlanej %d ", count, pomC);
             pomC++;
-            log_debug("pomC  %d  index %d name %s  Id  %d", pomC, i, gameServers[i].name, gameServers[i].gameId);
+
         }
     }
     sprintf(buffer, "%d %d", FIND_SERVERS, DONE);
@@ -431,7 +435,8 @@ void joinGameFromClient(ClientInfo *client) {
     if (result == OKEJ) {
         sprintf(buffer, "%d %d %d %s", JOIN_LOBBY, CREATED, client->id, client->name);
         for (int i = 0; i < gameServers[gameIndex].playerCount; ++i) {
-            log_debug("SEND INFO FOR PLAYERS IN LOBBY: ID: %d --- %s ", i, buffer);
+            log_debug("SEND INFO FOR PLAYERS IN LOBBY: index : %d  client id %d --- %s ", i, client->id,
+                      buffer);
 
             send(gameServers[gameIndex].clients[i]->socket, buffer, BUFFER_SIZE, 0);
         }
@@ -470,8 +475,15 @@ void leaveLobbyFromClient(ClientInfo *client) {
     if (client->admin) {
         client->admin = false;
         /// reset gameServer
-        gameServers[gameSlot] = emptyServer;
+        for (int i = 0; i < gameServers[gameSlot].playerCount; ++i) {
+            gameServers[gameSlot].clients[i]->id = 0;
+        }
         gameServers[gameSlot].gameId = 0;
+        gameServers[gameSlot].playerCount = 0;
+        gameServers[gameSlot].maxPlayerCount = 0;
+        gameServers[gameSlot].inGame = false;
+        gameServers[gameSlot].mapNumber = 0;
+
 
     }
     client->inLobby = false;
@@ -479,7 +491,7 @@ void leaveLobbyFromClient(ClientInfo *client) {
 
 void leaveLobbyDisconnect(ClientInfo *client) {
     for (int i = 0; i < MAX_CLIENT; ++i) {
-        for (int j = 0; j < MAX_CLIENT; ++j) {
+        for (int j = 0; j < gameServers[i].playerCount; ++j) {
             if (gameServers[i].clients[j]->id == client->id) {
                 sprintf(buffer, "%d %d %d %d %d", LEAVE_LOBBY, OKEJ, gameServers[i].gameId, client->id, client->admin);
                 leaveLobbyFromClient(client);
@@ -564,7 +576,7 @@ void sendMapToClient(ClientInfo *clinet) {
                 send(clinet->socket, buffer, BUFFER_SIZE, 0);
                 log_debug("Sending to client Buffer %s", buffer);
                 recv(clinet->socket, buffer, BUFFER_SIZE, 0);
-                log_debug("Accept finishing map from Client%s", buffer);
+                log_debug("Accept finishing map from Client  %s", buffer);
             }
             if (ferror(fp))
                 log_debug("Error reading\n");
