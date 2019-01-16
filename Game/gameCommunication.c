@@ -46,6 +46,7 @@ void *initGame(void *arg) {
     GameServers game = *((GameServers *) arg);
     int count = 0;
     playerSockets.end = false;
+    log_debug("UDP wating for clients in game SERVER");
     while (game.playerCount > count) {
         if (socketReady()) {
             int pomType;
@@ -126,7 +127,15 @@ enum gameEnum gameCommunication(enum gameEnum commTyp, char *data) {
 
 _Bool saveInGame(char *data) {
     int pomType, admin;
+//    struct sockaddr_in add;
+//    char nm[NAME_LENGTH];
+//    int id;
 
+    for (int i = 0; i < playerSockets.count; ++i) {
+        if (clientaddr.sin_addr.s_addr == playerSockets.client[i].address.sin_addr.s_addr) {
+            return false;
+        }
+    }
     sscanf(data, "%d %d %s %d",
            &pomType,
            &playerSockets.client[playerSockets.count].id,
@@ -135,6 +144,7 @@ _Bool saveInGame(char *data) {
 
     playerSockets.client[playerSockets.count].admin = (_Bool) admin;
     playerSockets.client[playerSockets.count].address = clientaddr;
+    return true;
 //    clientaddr
 }
 

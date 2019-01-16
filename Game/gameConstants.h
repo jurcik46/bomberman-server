@@ -9,7 +9,8 @@ enum gameEnum {
     IN_GAME,
     END,
     NON,
-    SUCCESS
+    SUCCESS,
+    SEND
 };
 
 #endif //BOMBERMAN_SERVER_GAMECONSTANTS_H

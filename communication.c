@@ -261,7 +261,7 @@ void startGameFromClient(ClientInfo *client) {
         }
         pthread_mutex_init(&gameServers[gameIndex].gamelock, NULL);
         pthread_create(&gameServers[gameIndex].gameThread, NULL, &initGame, &gameServers[gameIndex]);
-
+        usleep(500);
         sprintf(data, "%s %d", iP, tryPort); // preaper data
         sprintf(buffer, "%d %d %s", START, OKEJ, data); // preaper buffer
 
