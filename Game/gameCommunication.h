@@ -17,7 +17,7 @@
 #include "../communication.h"
 #include "../Game/gameConstants.h"
 
-#define BUFF_SIZE 100
+#define BUFF_SIZE 200
 #define MAX_GAME_PLAYER 4
 #define NAME_LENGTH 50
 
@@ -43,10 +43,10 @@ void *initGame(void *arg);
 void *acceptGameSocketPLayer(void *arg);
 
 _Bool socketReady();
-_Bool saveInGame(char *data);
+_Bool saveInGame(char *data, struct playerSockets * ps);
 
 
-enum gameEnum gameCommunication(enum gameEnum commTyp, char *data);
+enum gameEnum gameCommunication(enum gameEnum commTyp, char *data, PlayerSockets * pS);
 
 char *dataFromSocket();
 

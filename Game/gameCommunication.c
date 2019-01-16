@@ -13,7 +13,6 @@ fd_set socketDsGame;
 int sdGame;
 int activityGame;
 
-PlayerSockets playerSockets;
 
 _Bool initGameSocket(u_int16_t port) {
     int opt = 1;
@@ -44,17 +43,25 @@ _Bool initGameSocket(u_int16_t port) {
 
 void *initGame(void *arg) {
     GameServers game = *((GameServers *) arg);
-    int count = 0;
+    PlayerSockets playerSockets;
+
+    playerSockets.count = 0;
     playerSockets.end = false;
     log_debug("UDP wating for clients in game SERVER");
-    while (game.playerCount > count) {
+    while (game.playerCount > playerSockets.count) {
         if (socketReady()) {
             int pomType;
             sscanf(buffer, "%d", &pomType);
-            log_debug("UDP: Player count %d / %d Hrac poslal data : %s", count, game.playerCount, buffer);
-            if (gameCommunication(pomType, buffer) == SUCCESS) {
-                count++;
-                log_debug("UDP: Player joined to game count increment %d / %d", count, game.playerCount);
+            log_debug("UDP: Player count %d / %d Hrac poslal data : %s", playerSockets.count, game.playerCount, buffer);
+            if (gameCommunication(pomType, buffer, &playerSockets) == SUCCESS) {
+
+                playerSockets.count++;
+                log_debug("UDP: Player joined to game count increment %d / %d  %s", playerSockets.count,
+                          game.playerCount,
+                          game.clients[playerSockets.count - 1]->name);
+
+                sendto(gameServerSocket, buffer, BUFF_SIZE, 0, (struct sockaddr *) &clientaddr,
+                       sizeof(clientaddr));
             }
 
         }
@@ -65,13 +72,25 @@ void *initGame(void *arg) {
         if (socketReady()) {
             int pomType;
             sscanf(buffer, "%d", &pomType);
-            log_debug("UDP: Player count %d / %d Hrac poslal data : %s", count, game.playerCount, buffer);
-            if (pomType == END) {
-                gameCommunication(pomType, buffer);
-                log_debug("UDP:  Game END ");
-            }
-            for (int i = 0; i < playerSockets.count; ++i) {
-                if (clientaddr.sin_addr.s_addr != playerSockets.client[i].address.sin_addr.s_addr) {
+            log_debug("UDP: Player Hrac poslal data : %s", buffer);
+//            if (pomType == END) {
+//                gameCommunication(pomType, buffer);
+//                log_debug("UDP:  Game END ");
+//            }
+//            int index = -1;
+//            for (int i = 0; i < game.playerCount; ++i) {
+//                if (playerSockets.client[i].id == 15) {
+//                    sendto(gameServerSocket, buffer, BUFF_SIZE, 0,
+//                           (struct sockaddr *) &playerSockets.client[i].address,
+//                           sizeof(playerSockets.client[i].address));
+//                }
+//            }
+
+//            memset(buffer, '\0', BUFF_SIZE);
+
+//            log_debug("play count %d", playerSockets.count);
+            for (int i = 0; i < game.playerCount; ++i) {
+                if (clientaddr.sin_port != playerSockets.client[i].address.sin_port) {
                     if (sendto(gameServerSocket, buffer, BUFF_SIZE, 0,
                                (struct sockaddr *) &playerSockets.client[i].address,
                                sizeof(playerSockets.client[i].address)) ==
@@ -84,17 +103,19 @@ void *initGame(void *arg) {
                               playerSockets.client[i].name, buffer);
                 }
             }
+            memset(buffer, '\0', BUFF_SIZE);
         }
     }
+
     pthread_exit(NULL);
 
 }
 
-enum gameEnum gameCommunication(enum gameEnum commTyp, char *data) {
+enum gameEnum gameCommunication(enum gameEnum commTyp, char *data, PlayerSockets *pS) {
     switch (commTyp) {
         case IN_GAME:
             log_debug("IN_GAME");
-            if (saveInGame(data)) {
+            if (saveInGame(data, pS)) {
                 return SUCCESS;
             } else {
                 return NON;
@@ -102,7 +123,7 @@ enum gameEnum gameCommunication(enum gameEnum commTyp, char *data) {
 //            return loginToServer(data);
         case END:
             log_debug("END");
-            playerSockets.end = true;
+            pS->end = true;
 
 //            for (int i = 0; i < playerSockets.count; ++i) {
 //
@@ -125,25 +146,25 @@ enum gameEnum gameCommunication(enum gameEnum commTyp, char *data) {
 }
 
 
-_Bool saveInGame(char *data) {
+_Bool saveInGame(char *data, PlayerSockets *ps) {
     int pomType, admin;
 //    struct sockaddr_in add;
 //    char nm[NAME_LENGTH];
 //    int id;
 
-    for (int i = 0; i < playerSockets.count; ++i) {
-        if (clientaddr.sin_addr.s_addr == playerSockets.client[i].address.sin_addr.s_addr) {
+    for (int i = 0; i < ps->count + 1; ++i) {
+        if (clientaddr.sin_addr.s_addr == ps->client[i].address.sin_addr.s_addr) {
             return false;
         }
     }
     sscanf(data, "%d %d %s %d",
            &pomType,
-           &playerSockets.client[playerSockets.count].id,
-           playerSockets.client[playerSockets.count].name,
+           &ps->client[ps->count].id,
+           ps->client[ps->count].name,
            &admin);
 
-    playerSockets.client[playerSockets.count].admin = (_Bool) admin;
-    playerSockets.client[playerSockets.count].address = clientaddr;
+    ps->client[ps->count].admin = (_Bool) admin;
+    ps->client[ps->count].address = clientaddr;
     return true;
 //    clientaddr
 }

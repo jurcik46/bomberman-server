@@ -8,6 +8,7 @@ pthread_t acceptSocketThread;
  */
 int server_fd;
 struct sockaddr_in address;
+struct sockaddr_in addressClient;
 char buffer[BUFFER_SIZE];
 int opt;
 int addrlen;
@@ -80,6 +81,8 @@ void startCommunication() {
 
     tv.tv_usec = 10;
     while (a) {
+        usleep(10);
+
         FD_ZERO(&socketDs);
 
         setSocketToFD();
@@ -106,10 +109,10 @@ void startCommunication() {
                 if (recv(sd, buffer, BUFFER_SIZE, 0) == 0) {
 
                     //Somebody disconnected , get his details and print
-                    getpeername(sd, (struct sockaddr *) &address, \
+                    getpeername(sd, (struct sockaddr *) &addressClient, \
                         (socklen_t *) &addrlen);
                     log_warn("Host disconnected , ip %s , port %d , socket %d , nick %s",
-                             inet_ntoa(address.sin_addr), ntohs(address.sin_port),
+                             inet_ntoa(addressClient.sin_addr), ntohs(addressClient.sin_port),
                              sd, cSockets.client[i].name);
 
                     //Close the socket and mark as 0 in list for reuse
@@ -608,7 +611,7 @@ void setSocketToFD() {
 
 void *acceptSocketThreadFun(void *arg) {
     ClientsSockets *data = (ClientsSockets *) arg;
-    int addrlen = sizeof(address);
+    int addrlen = sizeof(addressClient);
 
     while (!data->end) {
 
